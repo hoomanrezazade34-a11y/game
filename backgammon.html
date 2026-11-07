@@ -21,6 +21,8 @@ button:disabled{opacity:.35}
 #st{min-height:38px;font-size:14px;line-height:1.5}
 #dice{font-size:36px;line-height:1.1;min-height:40px;direction:ltr;letter-spacing:2px}
 #dice .u{opacity:.25}
+#timer{font-size:22px;min-height:28px;font-weight:bold;color:var(--saffron)}
+#timer.low{color:#ff5a4d}
 #ctl{display:flex;flex-direction:column;gap:6px}
 #room{background:var(--card);border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:6px}
 #info{font-size:11px;opacity:.7;line-height:1.6}
@@ -39,6 +41,7 @@ button:disabled{opacity:.35}
     <div id="score"></div>
     <div id="st"></div>
     <div id="dice"></div>
+    <div id="timer"></div>
     <div id="room" hidden><div id="rmsg"></div><button id="share" class="main">📨 ارسال دعوت‌نامه</button><button id="copy">کپی لینک</button></div>
     <div id="ctl">
       <button id="roll" class="main">🎲 تاس بنداز</button>
@@ -72,10 +75,17 @@ const ALPHA='abcdefghjkmnpqrstuvwxyz23456789';
 const BROKERS=['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://test.mosquitto.org:8081'];
 // بعد از ساختن Mini App در BotFather، لینکش اینجاست
 const APP_LINK='https://t.me/Dongbegir_bot/nard';
+// مهلت هر حرکت (ثانیه). اگه بازیکن توی این مدت تاس نریخت یا حرکت نزد، کامپیوتر به جاش بازی می‌کنه
+const TURN_LIMIT=10;
+// اگه یه بازیکن این تعداد بار بازی نکنه و کامپیوتر به جاش بازی کنه، حریفش کل مسابقه رو می‌بره
+const AFK_LIMIT=3;
+// توی بازی آنلاین، اگه بازیکن بعد از مهلت + این چند ثانیه هنوز بازی نکرد (مثلاً تلگرام بسته شده)، گوشی حریف به جاش بازی می‌کنه
+const ENFORCE_GRACE=5;
+let lastKey='',deadline=0,lastTick=Date.now(),hold=0,turnNo=0;
 const rd=()=>1+Math.floor(Math.random()*6);
 const pi=p=>p===1?0:1;
 let S,turn,dice=[],shown=[],hist=[],mode='ai',sel=null,over=false,busy=false,NM=[];
-let msg=null,note='',ser={n:3,w:[0,0],h:1,fin:false};
+let msg=null,note='',ser={n:3,w:[0,0],h:1,fin:false,af:[0,0],last:[-1,-1]};
 let my=1,wait=false,code='',gid=0,mq=null,ver=0,guestId=null;
 const myId=Math.random().toString(36).slice(2,10);
 const later=(fn,ms)=>{const g=gid;setTimeout(()=>{if(g===gid)fn();},ms);};
@@ -204,6 +214,8 @@ function msgText(){
   if(note)return note;
   if(!msg)return '';
   if(msg.k==='start')return 'تاس اول: '+name(turn)+' شروع می‌کند';
+  if(msg.k==='auto')return '⏱ زمان تمام شد؛ کامپیوتر برای '+name(msg.p)+' بازی کرد (اخطار '+msg.n+' از '+AFK_LIMIT+')';
+  if(msg.k==='ff')return '⛔ '+name(msg.p)+' '+AFK_LIMIT+' بار بازی نکرد؛ '+name(msg.w)+' برنده مسابقه شد';
   if(msg.k==='pass')return 'حرکتی ممکن نیست؛ نوبت '+name(turn)+' رد می‌شود';
   if(msg.k==='win')return '🏆 '+name(msg.p)+' این دست را برد ('+['','ساده ۱','گمون ۲','بک‌گمون ۳'][msg.pts]+' امتیاز)'+(msg.tie?' — مساوی شد، یک دست اضافه':'');
   if(msg.k==='fin')return '🏆 '+name(msg.p)+' برنده کل مسابقه شد ('+ser.w[0]+' به '+ser.w[1]+')';
@@ -212,14 +224,14 @@ function msgText(){
 
 /* ---------- flow ---------- */
 function init(){
-  gid++;S=newState();over=false;busy=false;sel=null;hist=[];wait=false;note='';
+  gid++;turnNo++;S=newState();over=false;busy=false;sel=null;hist=[];wait=false;note='';
   let a,b;do{a=rd();b=rd();}while(a===b);
   turn=a>b?1:-1;dice=[a,b];shown=[a,b];msg={k:'start'};
   snd('dice');pub();after();
 }
-function rollFor(){
+function rollFor(auto){
   const a=rd(),b=rd();
-  shown=a===b?[a,a,a,a]:[a,b];dice=shown.slice();hist=[];sel=null;msg=null;
+  shown=a===b?[a,a,a,a]:[a,b];dice=shown.slice();hist=[];sel=null;msg=auto?{k:'auto',p:turn,n:auto}:null;
   snd('dice');pub();after();
 }
 function after(){
@@ -236,7 +248,7 @@ function after(){
     later(()=>{busy=false;rollFor();},700);
   }
 }
-function endTurn(){turn=-turn;dice=[];shown=[];hist=[];sel=null;msg=null;pub();after();}
+function endTurn(){turnNo++;turn=-turn;dice=[];shown=[];hist=[];sel=null;msg=null;pub();after();}
 function doMove(m){
   hist.push({S:clone(S),dice:dice.slice()});
   moveSnd(S,turn,m);apply(S,turn,m);dice.splice(dice.indexOf(m.d),1);sel=null;
@@ -280,6 +292,44 @@ function aiPlay(){
   },(i+1)*700));
 }
 
+/* ---------- time limit: computer plays for a slow player ---------- */
+const mirror=s=>({b:s.b.map((_,i)=>-s.b[23-i]),bar:[s.bar[1],s.bar[0]],off:[s.off[1],s.off[0]]});
+function strike(p){
+  const k=pi(p);ser.af=ser.af||[0,0];ser.last=ser.last||[-1,-1];
+  if(ser.last[k]!==turnNo){ser.last[k]=turnNo;ser.af[k]++;}
+  return ser.af[k];
+}
+function forfeit(p){
+  gid++;busy=false;sel=null;over=true;dice=[];shown=[];ser.fin=true;
+  msg={k:'ff',p,w:-p};clearRoom();snd('win');pub();render();
+}
+function autoPlay(){
+  const p=turn,n=strike(p);
+  if(n>=AFK_LIMIT){forfeit(p);return;}
+  if(!dice.length){rollFor(n);return;}
+  const all=seqs(S,p,dice);
+  if(!all.length)return;
+  let best=all[0],bv=-1e9;
+  for(const x of all){const v=evalS(p===1?mirror(x.st):x.st)+Math.random()*1.5;if(v>bv){bv=v;best=x;}}
+  busy=true;sel=null;msg={k:'auto',p,n};render();
+  best.path.forEach((m,i)=>later(()=>doMove(m),(i+1)*600));
+}
+setInterval(()=>{
+  const el=$('timer'),now=Date.now();
+  if(now-lastTick>2500)hold=now+3000;   // صفحه بسته/قفل بوده؛ اول اجازه بده وضعیت جدید برسه
+  lastTick=now;
+  if(!$('setup').hidden||over||busy||wait||now<hold){el.textContent='';return;}
+  const left=Math.ceil((deadline-now)/1000);
+  if(mine()){
+    el.textContent=left>0?'⏱ '+left:'';
+    el.className=left<=3?'low':'';
+    if(left<=0)autoPlay();
+  }else{
+    el.textContent='';
+    if(mode==='online'&&left<=-ENFORCE_GRACE)autoPlay();
+  }
+},250);
+
 /* ---------- online (MQTT relay: no direct phone-to-phone link needed) ---------- */
 const T=s=>'tnard/'+code+'/'+s;
 function saveRoom(){try{localStorage.setItem('nardRoom',JSON.stringify({code,my,t:Date.now()}));}catch(e){}}
@@ -291,13 +341,13 @@ function link(){return APP_LINK+'?startapp='+code;}
 function pub(){
   if(mode!=='online'||!mq)return;
   ver++;
-  mq.publish(T('st'),JSON.stringify({v:ver,f:myId,g:guestId,S,turn,dice,shown,over,msg,ser}),{qos:1,retain:true});
+  mq.publish(T('st'),JSON.stringify({v:ver,f:myId,g:guestId,S,turn,dice,shown,over,msg,ser,tn:turnNo}),{qos:1,retain:true});
 }
 function onSt(o){
   if(o.f===myId||o.v<=ver)return;
   if(my===-1&&o.g&&o.g!==myId){note='این اتاق پر است.';render();return;}
   const pS=JSON.stringify(S),pSh=JSON.stringify(shown),pOv=over;
-  ver=o.v;gid++;S=o.S;turn=o.turn;dice=o.dice;shown=o.shown;over=o.over;msg=o.msg;ser=o.ser;
+  ver=o.v;gid++;turnNo=o.tn||0;S=o.S;turn=o.turn;dice=o.dice;shown=o.shown;over=o.over;msg=o.msg;ser=o.ser;
   guestId=o.g||guestId;busy=false;sel=null;wait=false;note='';hist=[];
   $('room').hidden=true;
   if(over&&!pOv)snd('win');
@@ -365,6 +415,8 @@ function chk(x,y,r,p,hl){
          `<circle cx="${x}" cy="${y}" r="${r-6}" fill="none" stroke="${p===1?'#cbbd9c':'#4a3b33'}" stroke-width="1.5"/>`;
 }
 function render(){
+  const key=turn+'|'+dice.join(',')+'|'+over+'|'+ser.h;
+  if(key!==lastKey){lastKey=key;deadline=Date.now()+TURN_LIMIT*1000;}
   NM=(mine()&&dice.length&&!busy&&!over)?nextMoves():[];
   const dests=new Set(NM.filter(m=>sel!==null&&m.f===sel).map(m=>m.t));
   const srcs=new Set(NM.map(m=>m.f));
@@ -444,7 +496,7 @@ for(let n=1;n<=7;n++){const b=document.createElement('button');b.textContent=n;b
 $('modes').onclick=e=>{const m=e.target.dataset.m;if(!m)return;selMode=m;[...$('modes').children].forEach(b=>b.classList.toggle('on',b.dataset.m===m));};
 $('ns').onclick=e=>{const n=e.target.dataset.n;if(!n)return;selN=+n;[...$('ns').children].forEach(b=>b.classList.toggle('on',+b.dataset.n===selN));};
 $('go').onclick=()=>{
-  ser={n:selN,w:[0,0],h:1,fin:false};closeNet();clearRoom();$('setup').hidden=true;note='';
+  ser={n:selN,w:[0,0],h:1,fin:false,af:[0,0],last:[-1,-1]};closeNet();clearRoom();$('setup').hidden=true;note='';
   if(selMode==='online')startOnline();
   else{mode=selMode;wait=false;init();}
 };
