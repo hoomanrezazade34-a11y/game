@@ -44,6 +44,7 @@ button:disabled{opacity:.35}
       <button id="roll" class="main">🎲 تاس بنداز</button>
       <button id="next" class="main" hidden>دست بعدی ▶</button>
       <button id="undo">↩ برگشت</button>
+      <button id="mute">🔊 صدا</button>
       <button id="menu">☰ منو</button>
     </div>
     <div id="info"></div>
@@ -80,6 +81,45 @@ const myId=Math.random().toString(36).slice(2,10);
 const later=(fn,ms)=>{const g=gid;setTimeout(()=>{if(g===gid)fn();},ms);};
 const mine=()=>wait?false:mode==='ai'?turn===1:mode==='online'?turn===my:true;
 const aiTurn=()=>mode==='ai'&&turn===-1;
+
+/* ---------- sound (synthesized, no files) ---------- */
+let AC=null,muted=false;
+try{muted=localStorage.getItem('nardMute')==='1';}catch(e){}
+function ac(){
+  try{
+    if(!AC){const C=window.AudioContext||window.webkitAudioContext;if(C)AC=new C();}
+    if(AC&&AC.state==='suspended')AC.resume();
+  }catch(e){}
+  return AC;
+}
+function tone(f0,f1,dur,vol,type,t0){
+  const a=AC,o=a.createOscillator(),g=a.createGain();
+  o.type=type;o.frequency.setValueAtTime(f0,t0);o.frequency.exponentialRampToValueAtTime(f1,t0+dur);
+  g.gain.setValueAtTime(vol,t0);g.gain.exponentialRampToValueAtTime(0.001,t0+dur);
+  o.connect(g);g.connect(a.destination);o.start(t0);o.stop(t0+dur+0.02);
+}
+function nz(t0,dur,vol,freq){
+  const a=AC,n=Math.floor(a.sampleRate*dur),b=a.createBuffer(1,n,a.sampleRate),d=b.getChannelData(0);
+  for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*(1-i/n);
+  const s=a.createBufferSource();s.buffer=b;
+  const f=a.createBiquadFilter();f.type='bandpass';f.frequency.value=freq;f.Q.value=1.2;
+  const g=a.createGain();g.gain.value=vol;
+  s.connect(f);f.connect(g);g.connect(a.destination);s.start(t0);
+}
+function snd(k){
+  try{
+    if(muted||!ac())return;
+    const t=AC.currentTime;
+    if(k==='dice'){
+      for(let i=0;i<9;i++){const tt=t+i*0.055+Math.random()*0.03;nz(tt,0.04,0.6,1800+Math.random()*2500);tone(300+Math.random()*200,120,0.05,0.15,'triangle',tt);}
+    }else if(k==='move'){tone(220,90,0.09,0.55,'sine',t);nz(t,0.03,0.6,1400);}
+    else if(k==='hit'){tone(200,70,0.12,0.65,'sine',t);nz(t,0.04,0.7,900);tone(160,60,0.12,0.55,'sine',t+0.09);nz(t+0.09,0.04,0.6,900);}
+    else if(k==='off'){tone(330,150,0.1,0.45,'triangle',t);nz(t,0.03,0.5,2200);}
+    else if(k==='win'){[523,659,784,1047].forEach((f,i)=>tone(f,f,0.18,0.3,'triangle',t+i*0.12));}
+  }catch(e){}
+}
+addEventListener('pointerdown',()=>{ac();});
+const moveSnd=(s,p,m)=>snd(m.t==='off'?'off':(s.b[m.t]===-p?'hit':'move'));
 
 /* ---------- fit: landscape ---------- */
 function fit(){
@@ -149,7 +189,7 @@ function checkWin(){
   for(const p of[1,-1]){
     const k=pi(p);
     if(S.off[k]!==15)continue;
-    over=true;const lo=pi(-p);let pts=1;
+    over=true;snd('win');const lo=pi(-p);let pts=1;
     if(S.off[lo]===0){
       pts=2;const inH=i=>p===1?i<=5:i>=18;
       if(S.bar[lo]>0||S.b.some((c,i)=>c*(-p)>0&&inH(i)))pts=3;
@@ -175,12 +215,12 @@ function init(){
   gid++;S=newState();over=false;busy=false;sel=null;hist=[];wait=false;note='';
   let a,b;do{a=rd();b=rd();}while(a===b);
   turn=a>b?1:-1;dice=[a,b];shown=[a,b];msg={k:'start'};
-  pub();after();
+  snd('dice');pub();after();
 }
 function rollFor(){
   const a=rd(),b=rd();
   shown=a===b?[a,a,a,a]:[a,b];dice=shown.slice();hist=[];sel=null;msg=null;
-  pub();after();
+  snd('dice');pub();after();
 }
 function after(){
   render();
@@ -199,7 +239,7 @@ function after(){
 function endTurn(){turn=-turn;dice=[];shown=[];hist=[];sel=null;msg=null;pub();after();}
 function doMove(m){
   hist.push({S:clone(S),dice:dice.slice()});
-  apply(S,turn,m);dice.splice(dice.indexOf(m.d),1);sel=null;
+  moveSnd(S,turn,m);apply(S,turn,m);dice.splice(dice.indexOf(m.d),1);sel=null;
   checkWin();pub();
   if(over){render();return;}
   if(!dice.length){busy=true;render();later(()=>{busy=false;endTurn();},500);}
@@ -235,7 +275,7 @@ function aiPlay(){
   const all=seqs(S,-1,dice);let best=all[0],bv=-1e9;
   for(const x of all){const v=evalS(x.st)+Math.random()*1.5;if(v>bv){bv=v;best=x;}}
   best.path.forEach((m,i)=>later(()=>{
-    apply(S,-1,m);dice.splice(dice.indexOf(m.d),1);checkWin();render();
+    moveSnd(S,-1,m);apply(S,-1,m);dice.splice(dice.indexOf(m.d),1);checkWin();render();
     if(i===best.path.length-1&&!over)later(()=>{busy=false;endTurn();},600);
   },(i+1)*700));
 }
@@ -256,9 +296,13 @@ function pub(){
 function onSt(o){
   if(o.f===myId||o.v<=ver)return;
   if(my===-1&&o.g&&o.g!==myId){note='این اتاق پر است.';render();return;}
+  const pS=JSON.stringify(S),pSh=JSON.stringify(shown),pOv=over;
   ver=o.v;gid++;S=o.S;turn=o.turn;dice=o.dice;shown=o.shown;over=o.over;msg=o.msg;ser=o.ser;
   guestId=o.g||guestId;busy=false;sel=null;wait=false;note='';hist=[];
   $('room').hidden=true;
+  if(over&&!pOv)snd('win');
+  else if(JSON.stringify(shown)!==pSh&&shown.length)snd('dice');
+  else if(JSON.stringify(S)!==pS)snd('move');
   if(!over&&mine()&&dice.length)after();else render();
 }
 function onHi(o){
@@ -385,6 +429,9 @@ $('undo').onclick=()=>{
 };
 $('next').onclick=()=>{if(over&&!ser.fin&&(mode!=='online'||my===1)){ser.h++;init();}};
 $('menu').onclick=()=>{closeNet();clearRoom();gid++;busy=false;mode='ai';wait=false;note='';$('room').hidden=true;$('setup').hidden=false;};
+function muteLabel(){$('mute').textContent=muted?'🔇 بی‌صدا':'🔊 صدا';}
+$('mute').onclick=()=>{muted=!muted;try{localStorage.setItem('nardMute',muted?'1':'0');}catch(e){}muteLabel();if(!muted)snd('move');};
+muteLabel();
 $('share').onclick=()=>{
   const u='https://t.me/share/url?url='+encodeURIComponent(link())+'&text='+encodeURIComponent('بیا تخته نرد بازی کنیم 🎲');
   if(tg&&tg.openTelegramLink)tg.openTelegramLink(u);else window.open(u,'_blank');
