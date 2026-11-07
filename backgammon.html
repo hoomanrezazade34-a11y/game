@@ -5,8 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>تخته نرد</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <style>
 :root{--wood:#3b2416;--teal:#1f6f78;--ivory:#efe6d0;--saffron:#e0a526;--bg:#1b1410}
+[hidden]{display:none!important}
+#room{background:#2a190e;border-radius:10px;padding:10px;margin:6px auto;max-width:420px}
+#rmsg{margin-bottom:8px;font-size:14px}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;padding:8px;background:var(--bg);color:var(--ivory);font-family:Tahoma,Arial,sans-serif;text-align:center;user-select:none}
 #top{display:flex;gap:8px;justify-content:center;margin-bottom:6px}
@@ -23,9 +27,10 @@ button:disabled{opacity:.35}
 </head>
 <body>
 <div id="top">
-  <select id="mode"><option value="ai">با کامپیوتر</option><option value="pvp">دو نفره</option></select>
+  <select id="mode"><option value="ai">با کامپیوتر</option><option value="pvp">دو نفره (یک گوشی)</option><option value="online">آنلاین با دوست</option></select>
   <button id="new">بازی جدید</button>
 </div>
+<div id="room" hidden><div id="rmsg"></div><button id="share" class="main">📨 ارسال دعوت‌نامه</button> <button id="copy">کپی لینک</button></div>
 <div id="st"></div>
 <svg id="bd" viewBox="0 0 704 430"></svg>
 <div id="dice"></div>
@@ -42,7 +47,12 @@ const X0=14,X1=346,PW=48;
 const FACE='⚀⚁⚂⚃⚄⚅';
 const rd=()=>1+Math.floor(Math.random()*6);
 const pi=p=>p===1?0:1;
+// بعد از ساختن Mini App در BotFather، لینکش رو اینجا بذار. مثال: 'https://t.me/YourBot/nard'
+const APP_LINK='';
 let S,turn,dice=[],shown=[],hist=[],mode='ai',sel=null,over=false,busy=false,NM=[],msg='';
+let my=1,peer=null,conn=null,wait=false,code='',gid=0;
+const later=(fn,ms)=>{const g=gid;setTimeout(()=>{if(g===gid)fn();},ms);};
+const mine=()=>wait?false:mode==='ai'?turn===1:mode==='online'?turn===my:true;
 
 /* ---------- rules ---------- */
 function newState(){const b=Array(24).fill(0);b[5]=5;b[7]=3;b[12]=5;b[23]=2;b[18]=-5;b[16]=-3;b[11]=-5;b[0]=-2;return{b,bar:[0,0],off:[0,0]};}
@@ -100,7 +110,7 @@ function seqs(s,p,ds){
 }
 const nextMoves=()=>dice.length?seqs(S,turn,dice).map(x=>x.path[0]):[];
 const pips=(s,p)=>{let t=s.bar[pi(p)]*25;for(let i=0;i<24;i++)if(s.b[i]*p>0)t+=Math.abs(s.b[i])*(p===1?i+1:24-i);return t;};
-const name=p=>mode==='ai'?(p===1?'شما':'کامپیوتر'):(p===1?'سفید':'سیاه');
+const name=p=>mode==='ai'?(p===1?'شما':'کامپیوتر'):mode==='online'?(p===my?'شما':'دوستت'):(p===1?'سفید':'سیاه');
 
 function checkWin(){
   for(const p of[1,-1]){
@@ -117,50 +127,89 @@ function checkWin(){
 }
 
 /* ---------- flow ---------- */
-function init(){
-  S=newState();over=false;busy=false;sel=null;hist=[];
-  let a,b;do{a=rd();b=rd();}while(a===b);
+function init(a,b,fromNet){
+  gid++;S=newState();over=false;busy=false;sel=null;hist=[];wait=false;
+  if(!a){do{a=rd();b=rd();}while(a===b);}
   turn=a>b?1:-1;dice=[a,b];shown=[a,b];
   msg='تاس اول: '+name(turn)+' شروع می‌کند';
+  if(mode==='online'&&!fromNet)send({t:'start',a,b});
   after();
 }
-function rollFor(){
-  const a=rd(),b=rd();
+function rollFor(a=rd(),b=rd(),fromNet){
   shown=a===b?[a,a,a,a]:[a,b];dice=shown.slice();hist=[];sel=null;msg='';
+  if(mode==='online'&&!fromNet)send({t:'roll',a,b});
   after();
 }
+const aiTurn=()=>mode==='ai'&&turn===-1;
 function after(){
   render();
   if(over)return;
-  const human=!(mode==='ai'&&turn===-1);
   if(dice.length){
     if(!seqs(S,turn,dice).length){
       busy=true;msg='حرکتی ممکن نیست؛ نوبت رد می‌شود';render();
-      setTimeout(()=>{busy=false;endTurn();},1400);
-    }else if(!human)aiPlay();
-  }else if(!human){
+      later(()=>{busy=false;endTurn();},1400);
+    }else if(aiTurn())aiPlay();
+  }else if(aiTurn()){
     busy=true;render();
-    setTimeout(()=>{busy=false;rollFor();},700);
+    later(()=>{busy=false;rollFor();},700);
   }
 }
 function endTurn(){turn=-turn;dice=[];shown=[];hist=[];sel=null;msg='';after();}
-function doMove(m){
+function doMove(m,fromNet){
+  if(mode==='online'&&!fromNet)send({t:'move',m});
   hist.push({S:clone(S),dice:dice.slice()});
   apply(S,turn,m);dice.splice(dice.indexOf(m.d),1);sel=null;
   checkWin();
   if(over){render();return;}
-  if(!dice.length){busy=true;render();setTimeout(()=>{busy=false;endTurn();},500);}
+  if(!dice.length){busy=true;render();later(()=>{busy=false;endTurn();},500);}
   else after();
 }
 function click(v){
-  if(over||busy||!dice.length)return;
-  if(mode==='ai'&&turn===-1)return;
+  if(over||busy||!dice.length||!mine())return;
   if(sel!==null){
     const m=NM.filter(m=>m.f===sel&&m.t===v).sort((a,b)=>a.d-b.d)[0];
     if(m){doMove(m);return;}
   }
   sel=NM.some(m=>m.f===v)?v:null;
   render();
+}
+
+/* ---------- online ---------- */
+function send(o){try{if(conn&&conn.open)conn.send(o);}catch(e){}}
+function link(){return APP_LINK?APP_LINK+'?startapp='+code:location.origin+location.pathname+'?room='+code;}
+function closeNet(){try{if(peer)peer.destroy();}catch(e){}peer=null;conn=null;}
+function blank(){gid++;S=newState();turn=1;dice=[];shown=[];hist=[];over=false;busy=false;sel=null;msg='';}
+function wire(){
+  conn.on('data',d=>{
+    wait=false;
+    if(d.t==='start')init(d.a,d.b,true);
+    else if(d.t==='roll')rollFor(d.a,d.b,true);
+    else if(d.t==='move')doMove(d.m,true);
+  });
+  conn.on('close',()=>{if(!over){msg='ارتباط با دوستت قطع شد';busy=true;render();}});
+}
+function hostRoom(){
+  closeNet();blank();my=1;wait=true;
+  code=Array.from({length:6},()=>'abcdefghjkmnpqrstuvwxyz23456789'[Math.floor(Math.random()*31)]).join('');
+  $('room').hidden=false;$('rmsg').textContent='در حال ساخت اتاق…';
+  peer=new Peer('tnard-'+code);
+  peer.on('open',()=>{$('rmsg').textContent='دعوت‌نامه رو برای دوستت بفرست. وقتی وارد شد بازی شروع می‌شه.';});
+  peer.on('connection',c=>{
+    conn=c;wire();
+    c.on('open',()=>{$('room').hidden=true;init();});
+  });
+  peer.on('error',e=>{if(e.type==='unavailable-id')hostRoom();else{$('rmsg').textContent='خطا در اتصال ('+e.type+'). دوباره امتحان کن.';}});
+  render();
+}
+function joinRoom(c){
+  mode='online';$('mode').value='online';my=-1;code=c;wait=true;blank();
+  msg='در حال اتصال به دوستت…';render();
+  peer=new Peer();
+  peer.on('open',()=>{
+    conn=peer.connect('tnard-'+c,{reliable:true});wire();
+    later(()=>{if(wait){msg='اتصال برقرار نشد. مطمئن شو دوستت بازی رو باز گذاشته و لینک رو دوباره بزن.';render();}},15000);
+  });
+  peer.on('error',e=>{msg='خطا در اتصال ('+e.type+')';render();});
 }
 
 /* ---------- computer player ---------- */
@@ -182,9 +231,9 @@ function aiPlay(){
   busy=true;render();
   const all=seqs(S,-1,dice);let best=all[0],bv=-1e9;
   for(const x of all){const v=evalS(x.st)+Math.random()*1.5;if(v>bv){bv=v;best=x;}}
-  best.path.forEach((m,i)=>setTimeout(()=>{
+  best.path.forEach((m,i)=>later(()=>{
     apply(S,-1,m);dice.splice(dice.indexOf(m.d),1);checkWin();render();
-    if(i===best.path.length-1&&!over)setTimeout(()=>{busy=false;endTurn();},600);
+    if(i===best.path.length-1&&!over)later(()=>{busy=false;endTurn();},600);
   },(i+1)*700));
 }
 
@@ -204,8 +253,7 @@ function chk(x,y,r,p,hl){
          `<circle cx="${x}" cy="${y}" r="${r-6}" fill="none" stroke="${p===1?'#cbbd9c':'#4a3b33'}" stroke-width="1.5"/>`;
 }
 function render(){
-  const human=!(mode==='ai'&&turn===-1);
-  NM=(human&&dice.length&&!busy&&!over)?nextMoves():[];
+  NM=(mine()&&dice.length&&!busy&&!over)?nextMoves():[];
   const dests=new Set(NM.filter(m=>sel!==null&&m.f===sel).map(m=>m.t));
   const srcs=new Set(NM.map(m=>m.f));
   let g='<rect width="704" height="430" rx="12" fill="#3b2416"/>'+
@@ -247,9 +295,10 @@ function render(){
 
   const usedN=shown.length-dice.length;
   $('dice').innerHTML=shown.map((d,i)=>`<span class="${i<usedN?'u':''}">${FACE[d-1]}</span>`).join('');
-  $('st').textContent=msg||(over?'':'نوبت: '+name(turn)+(human&&!dice.length?' — تاس بنداز':busy?' …':''));
-  $('roll').disabled=!(human&&!dice.length&&!over&&!busy);
-  $('undo').disabled=!(human&&hist.length&&!over&&!busy);
+  $('st').textContent=msg||(over?'':wait?'منتظر اتصال…':'نوبت: '+name(turn)+(mine()&&!dice.length?' — تاس بنداز':busy?' …':''));
+  $('roll').disabled=!(mine()&&!dice.length&&!over&&!busy);
+  $('undo').disabled=!(mine()&&hist.length&&!over&&!busy&&mode!=='online');
+  $('new').disabled=mode==='online'&&my!==1;
   $('info').textContent=`${name(1)}: ${pips(S,1)} پیپ، ${S.off[0]} خارج‌شده  |  ${name(-1)}: ${pips(S,-1)} پیپ، ${S.off[1]} خارج‌شده`;
 }
 
@@ -264,9 +313,21 @@ $('undo').onclick=()=>{
   if(!hist.length||busy)return;
   const h=hist.pop();S=h.S;dice=h.dice;sel=null;msg='';render();
 };
-$('new').onclick=init;
-$('mode').onchange=e=>{mode=e.target.value;init();};
-init();
+$('new').onclick=()=>{if(mode==='online'){if(my===1&&conn&&conn.open)init();}else init();};
+$('mode').onchange=e=>{
+  mode=e.target.value;closeNet();wait=false;$('room').hidden=true;
+  if(mode==='online')hostRoom();else init();
+};
+$('share').onclick=()=>{
+  const u='https://t.me/share/url?url='+encodeURIComponent(link())+'&text='+encodeURIComponent('بیا تخته نرد بازی کنیم 🎲');
+  if(tg&&tg.openTelegramLink)tg.openTelegramLink(u);else window.open(u,'_blank');
+};
+$('copy').onclick=()=>{
+  try{navigator.clipboard.writeText(link());$('copy').textContent='کپی شد ✓';}catch(e){prompt('لینک:',link());}
+};
+const sp=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.start_param;
+const room=sp||new URLSearchParams(location.search).get('room');
+if(room&&/^[a-z0-9]{6}$/.test(room))joinRoom(room);else init();
 </script>
 </body>
 </html>
