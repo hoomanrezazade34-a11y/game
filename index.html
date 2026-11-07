@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>بازی تست</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: Tahoma, Arial, sans-serif;
+    background: #1e2a3a;
+    color: #fff;
+    text-align: center;
+    user-select: none;
+  }
+  h1 { margin: 0 0 8px; font-size: 22px; }
+  #hello { margin-bottom: 20px; opacity: .8; font-size: 15px; }
+  #score { font-size: 56px; font-weight: bold; margin: 10px 0 24px; }
+  #btn {
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    border: none;
+    font-size: 64px;
+    background: #f5a623;
+    box-shadow: 0 8px 0 #c47f0c;
+    cursor: pointer;
+    transition: transform .05s, box-shadow .05s;
+  }
+  #btn:active {
+    transform: translateY(6px);
+    box-shadow: 0 2px 0 #c47f0c;
+  }
+  #reset {
+    margin-top: 30px;
+    padding: 10px 24px;
+    border: none;
+    border-radius: 10px;
+    background: #3b4b61;
+    color: #fff;
+    font-size: 15px;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+  <h1>🎮 بازی تست</h1>
+  <div id="hello">سلام!</div>
+  <div id="score">0</div>
+  <button id="btn">⭐</button>
+  <button id="reset">شروع دوباره</button>
+
+<script>
+  const tg = window.Telegram && window.Telegram.WebApp;
+  if (tg) {
+    tg.ready();
+    tg.expand();
+    const user = tg.initDataUnsafe && tg.initDataUnsafe.user;
+    if (user && user.first_name) {
+      document.getElementById('hello').textContent = 'سلام ' + user.first_name + '!';
+    }
+  }
+
+  let score = 0;
+  const scoreEl = document.getElementById('score');
+
+  document.getElementById('btn').addEventListener('click', () => {
+    score++;
+    scoreEl.textContent = score;
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+  });
+
+  document.getElementById('reset').addEventListener('click', () => {
+    score = 0;
+    scoreEl.textContent = score;
+  });
+</script>
+</body>
+</html>
