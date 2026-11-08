@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>حکم</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<style>
+:root{--saffron:#e0a526;--ivory:#efe6d0;--felt:#1d5a3b}
+[hidden]{display:none!important}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--felt);color:var(--ivory);font-family:Tahoma,Arial,sans-serif;user-select:none;touch-action:manipulation}
+#app{position:fixed;top:0;left:0;width:100%;height:100%;overflow:hidden;background:var(--felt)}
+#bd{position:absolute;inset:0;width:100%;height:100%}
+button{font-family:inherit;font-size:15px;padding:10px 14px;border:0;border-radius:12px;background:rgba(255,255,255,.16);color:var(--ivory)}
+.glass{background:rgba(10,30,20,.5);-webkit-backdrop-filter:blur(16px) saturate(1.4);backdrop-filter:blur(16px) saturate(1.4);border:1px solid rgba(255,255,255,.25);color:var(--ivory);box-shadow:0 8px 30px rgba(0,0,0,.4)}
+.big{background:rgba(224,165,38,.9)!important;color:#2a1a0c;font-weight:bold;font-size:19px;padding:14px 24px;border-radius:18px}
+#burger{position:absolute;top:6px;left:6px;width:40px;height:40px;padding:0;font-size:22px;z-index:3}
+#timer{position:absolute;top:8px;right:8px;z-index:3;border-radius:12px;padding:4px 12px;font-size:18px;font-weight:bold;color:var(--saffron);pointer-events:none}
+#timer.low{color:#ff6b5e}
+#timer:empty{display:none}
+#next,#room{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4}
+#room{border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:8px;text-align:center;min-width:240px}
+#scrim{position:absolute;inset:0;z-index:5}
+#menu{position:absolute;top:6px;left:6px;bottom:6px;width:min(280px,72%);border-radius:20px;padding:14px;z-index:6;display:flex;flex-direction:column;gap:9px;text-align:center;font-size:14px;animation:slide .2s ease-out}
+#menu h3{margin:0;font-size:17px}
+#score{line-height:1.9;background:rgba(255,255,255,.08);border-radius:12px;padding:8px}
+@keyframes slide{from{transform:translateX(-26px);opacity:0}to{transform:none;opacity:1}}
+#setup{position:absolute;inset:0;background:#10281b;z-index:8;display:flex;align-items:center;justify-content:center;overflow:auto}
+#setup .box{display:flex;flex-direction:column;gap:9px;align-items:center;text-align:center;padding:10px}
+#setup h2{margin:0;font-size:24px}
+#setup .row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+#setup button.on{background:var(--saffron);color:#2a1a0c;font-weight:bold}
+#setup small{opacity:.7}
+#go{font-size:17px;padding:11px 36px;background:var(--saffron);color:#2a1a0c;font-weight:bold}
+</style>
+</head>
+<body>
+<div id="app">
+  <svg id="bd" viewBox="0 0 800 440" preserveAspectRatio="xMidYMid meet"></svg>
+  <button id="burger" class="glass">☰</button>
+  <div id="timer" class="glass"></div>
+  <button id="next" class="glass big" hidden>دست بعدی ▶</button>
+  <div id="room" class="glass" hidden><div id="rmsg"></div><button id="share" class="big" style="font-size:16px;padding:10px 16px">📨 ارسال دعوت‌نامه</button><button id="copy">کپی لینک</button></div>
+  <div id="scrim" hidden></div>
+  <div id="menu" class="glass" hidden><h3>🃏 حکم</h3><div id="score"></div><button id="rotbtn">🔄 برعکس کردن صفحه</button><button id="lobby">🎮 لیست بازی‌ها</button><button id="home">🏠 بازی جدید</button></div>
+  <div id="setup"><div class="box">
+    <h2>🃏 حکم</h2>
+    <div>تعداد بازیکن‌های واقعی</div>
+    <div class="row" id="ps"><button data-n="1" class="on">۱ (تنها)</button><button data-n="2">۲</button><button data-n="3">۳</button><button data-n="4">۴</button></div>
+    <small>جای خالی رو کامپیوتر پر می‌کنه</small>
+    <div>بازی تا چند دست؟</div>
+    <div class="row" id="ts"></div>
+    <button id="go">شروع بازی</button>
+    <button id="rot2" style="font-size:13px;opacity:.85">🔄 صفحه برعکسه؟ اینجا بزن</button>
+    <button id="lobby2" style="font-size:13px;opacity:.85">🎮 لیست بازی‌ها</button>
+  </div></div>
+</div>
+<script>
+const tg=window.Telegram&&window.Telegram.WebApp;
+if(tg){try{tg.ready();tg.expand();if(tg.disableVerticalSwipes)tg.disableVerticalSwipes();}catch(e){}}
+const $=id=>document.getElementById(id);
+const APP_LINK='https://t.me/Dongbegir_bot/hokm';
+const LIMIT=15,AFK=5;                       // مهلت هر حرکت (ثانیه) و تعداد دفعات بازی‌نکردن
+const BROKERS=['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://test.mosquitto.org:8081'];
+const ALPHA='abcdefghjkmnpqrstuvwxyz23456789';
+const SY=['♠','♥','♦','♣'],RK=['2','3','4','5','6','7','8','9','10','J','Q','K','A'],ORD=[0,1,3,2];
+const su=c=>c/13|0,rk=c=>c%13;
+const myId=(()=>{try{let i=localStorage.getItem('hkId');if(!i){i=Math.random().toString(36).slice(2,10);localStorage.setItem('hkId',i);}return i;}catch(e){return Math.random().toString(36).slice(2,10);}})();
+const myName=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.first_name)||'من';
+let G=null,isHost=true,mySeat=0,mode='local',code='',mq=null,ver=0,gid=0,note='',recv=0;
+const bot=s=>!G.hs.includes(s);
+const shuf=a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]];}return a;};
+const esc=t=>String(t).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+let rot=1;try{rot=localStorage.getItem('rotDir')==='-1'?-1:1;}catch(e){}
+function fit(){
+  const w=innerWidth,h=innerHeight,a=$('app').style;
+  a.cssText=h>w?(rot===1?`position:fixed;top:0;left:${w}px;width:${h}px;height:${w}px;transform-origin:0 0;transform:rotate(90deg)`
+                        :`position:fixed;top:${h}px;left:0;width:${h}px;height:${w}px;transform-origin:0 0;transform:rotate(-90deg)`)
+               :'position:fixed;top:0;left:0;width:100%;height:100%';
+}
+function flipScreen(){rot=-rot;try{localStorage.setItem('rotDir',rot);}catch(e){}fit();}
+addEventListener('resize',fit);fit();
+
+/* ---------- game engine (runs on the host) ---------- */
+function newGame(n,target){
+  const hs={1:[0],2:[0,2],3:[0,1,2],4:[0,1,2,3]}[n];
+  G={ph:'wait',hs,sm:{[myId]:0},af:[0,0,0,0],sc:[0,0],tg:target,hno:1,hk:0,h:[[],[],[],[]],f5:[],cur:[],tw:[0,0],tr:-1,led:-1,tn:0,msg:null,v:0,win:-1,
+     nm:[0,1,2,3].map(s=>s===0?myName:hs.includes(s)?'بازیکن '+(s+1):'کامپیوتر')};
+}
+function newHand(first){
+  if(first){G.hk=shuf([...Array(52).keys()]).findIndex(c=>rk(c)===12)%4;}   // اولین آس، حاکم می‌شه
+  G.h=[[],[],[],[]];shuf([...Array(52).keys()]).forEach((c,i)=>G.h[i%4].push(c));
+  G.f5=G.h[G.hk].slice(0,5);G.tr=-1;G.ph='hokm';G.tn=G.hk;G.cur=[];G.led=-1;G.tw=[0,0];
+  G.msg=first?{k:'ace',p:G.hk}:null;
+}
+function legal(s){const h=G.h[s];if(G.led<0)return h;const f=h.filter(c=>su(c)===G.led);return f.length?f:h;}
+const pw=c=>su(c)===G.tr?100+rk(c):su(c)===G.led?rk(c):-1;
+function trickWinner(){return G.cur.reduce((a,b)=>pw(b.c)>pw(a.c)?b:a).p;}
+function doHokm(s,suit,m){
+  if(G.ph!=='hokm'||G.tn!==s||!(suit>=0&&suit<4))return;
+  G.tr=suit;G.ph='play';G.tn=G.hk;G.msg=m||null;step();
+}
+function doPlay(s,c,m){
+  if(G.ph!=='play'||G.tn!==s||!legal(s).includes(c))return;
+  G.h[s]=G.h[s].filter(x=>x!==c);
+  if(!G.cur.length)G.led=su(c);
+  G.cur.push({p:s,c});G.msg=m||null;
+  if(G.cur.length===4)G.ph='tend';else G.tn=(s+1)%4;
+  step();
+}
+function resolve(){
+  const w=trickWinner();G.tw[w%2]++;G.cur=[];G.led=-1;G.msg={k:'tw',p:w};
+  if(!G.h[0].length){endHand();return;}
+  G.tn=w;G.ph='play';step();
+}
+function endHand(){
+  const hk=G.hk%2,wt=G.tw[0]>=7?0:1,all=G.tw[wt]===13;
+  const pts=wt===hk?(all?2:1):(all?3:2);          // حاکم ببره ۱ (کوت ۲)، حاکم ببازه ۲ (حاکم‌کوت ۳)
+  G.sc[wt]+=pts;G.msg={k:'hand',t:wt,pts,all};G.nextHk=wt===hk?G.hk:(G.hk+1)%4;
+  if(G.sc[wt]>=G.tg){G.ph='mend';G.win=wt;}else G.ph='hend';
+  step();
+}
+function nextHand(){if(!isHost||G.ph!=='hend')return;G.hk=G.nextHk;G.hno++;newHand(false);step();}
+function timeout(s){
+  G.af[s]++;
+  if(G.af[s]>=AFK){G.ph='mend';G.win=1-s%2;G.msg={k:'ff',p:s};step();return;}
+  const m={k:'auto',p:s,n:G.af[s]};
+  if(G.ph==='hokm')doHokm(s,botHokm(),m);else doPlay(s,botPlay(s),m);
+}
+function botHokm(){const c=[0,0,0,0],r=[0,0,0,0];G.f5.forEach(x=>{c[su(x)]++;r[su(x)]+=rk(x);});return [0,1,2,3].sort((a,b)=>c[b]-c[a]||r[b]-r[a])[0];}
+function botPlay(s){
+  const L=legal(s),sc=c=>(su(c)===G.tr?100:0)+rk(c),low=a=>a.slice().sort((x,y)=>sc(x)-sc(y))[0];
+  if(!G.cur.length){
+    const nt=L.filter(c=>su(c)!==G.tr),ace=nt.filter(c=>rk(c)>=11).sort((a,b)=>rk(b)-rk(a))[0];
+    return ace!==undefined?ace:nt.length?low(nt):L.slice().sort((a,b)=>rk(b)-rk(a))[0];
+  }
+  const best=G.cur.reduce((a,b)=>pw(b.c)>pw(a.c)?b:a);
+  if(best.p===(s+2)%4)return low(L);
+  const win=L.filter(c=>pw(c)>pw(best.c));
+  return win.length?win.sort((a,b)=>pw(a)-pw(b))[0]:low(L);
+}
+function step(){
+  G.now=Date.now();G.dl=G.now+LIMIT*1000;
+  if(mode==='online'&&mq){G.v=++ver;mq.publish(T('st'),JSON.stringify(G),{qos:1,retain:true});}
+  render();
+  gid++;const g=gid,L=(f,ms)=>setTimeout(()=>{if(g===gid)f();},ms);
+  if(G.ph==='hokm'||G.ph==='play'){
+    const s=G.tn;
+    if(bot(s))L(()=>G.ph==='hokm'?doHokm(s,botHokm()):doPlay(s,botPlay(s)),700+Math.random()*500);
+    else L(()=>timeout(s),LIMIT*1000);
+  }else if(G.ph==='tend')L(resolve,1400);
+}
+
+/* ---------- online (MQTT relay) ---------- */
+const T=s=>'tnard/'+code+'/'+s;
+function closeNet(){try{if(mq)mq.end(true);}catch(e){}mq=null;}
+function mqConnect(i,ok,fail){
+  if(typeof mqtt==='undefined'){fail();return;}
+  let done=false;
+  const c=mqtt.connect(BROKERS[i],{clientId:'hk'+myId+i,connectTimeout:6000,reconnectPeriod:3000});
+  const t=setTimeout(()=>{if(!done){done=true;try{c.end(true);}catch(e){}fail();}},7000);
+  c.on('connect',()=>{
+    if(!done){done=true;clearTimeout(t);mq=c;ok();}
+    if(c!==mq)return;
+    if(isHost){c.subscribe(T('hi'),{qos:1});c.subscribe(T('act'),{qos:1});}
+    else{c.subscribe(T('st'),{qos:1});c.publish(T('hi'),JSON.stringify({id:myId,name:myName}),{qos:1});}
+  });
+  c.on('error',()=>{});
+  c.on('message',(tp,m)=>{
+    if(c!==mq)return;let o;try{o=JSON.parse(m.toString());}catch(e){return;}
+    if(tp.endsWith('/st'))onSt(o);else if(tp.endsWith('/hi'))onHi(o);else if(tp.endsWith('/act'))onAct(o);
+  });
+}
+function onHi(o){
+  if(!isHost||!G)return;
+  if(G.sm[o.id]===undefined){
+    const free=G.hs.find(s=>!Object.values(G.sm).includes(s));
+    if(free===undefined)return;
+    G.sm[o.id]=free;G.nm[free]=o.name||G.nm[free];
+  }
+  if(G.ph==='wait'&&Object.keys(G.sm).length>=G.hs.length)newHand(true);
+  step();
+}
+function onAct(o){
+  if(!isHost||!G)return;const s=G.sm[o.id];
+  if(s===undefined)return;
+  if(o.t==='play')doPlay(s,o.x);else if(o.t==='hokm')doHokm(s,o.x);
+}
+function onSt(o){
+  if(isHost||o.v<=ver)return;
+  ver=o.v;G=o;recv=Date.now();mySeat=G.sm[myId];
+  note=mySeat===undefined?'این اتاق پر است.':'';
+  if(mySeat===undefined)mySeat=0;
+  render();
+}
+function tryHost(i){
+  if(i>=BROKERS.length){note='اتصال به سرور بازی برقرار نشد. اینترنت یا فیلترشکن رو چک کن.';render();return;}
+  code=i+Array.from({length:5},()=>ALPHA[Math.random()*ALPHA.length|0]).join('');
+  note='در حال ساخت اتاق…';render();
+  mqConnect(i,()=>{note='';step();},()=>tryHost(i+1));
+}
+function joinRoom(cd){
+  closeNet();isHost=false;mode='online';code=cd;G=null;ver=0;note='در حال اتصال…';$('setup').hidden=true;render();
+  mqConnect(+cd[0],()=>{},()=>{note='اتصال به سرور بازی برقرار نشد.';render();});
+  setTimeout(()=>{if(!G){note='اتصال برقرار نشد. مطمئن شو میزبان بازی رو باز گذاشته.';render();}},15000);
+}
+function act(t,x){
+  if(!G)return;
+  if(isHost){if(t==='play')doPlay(mySeat,x);else doHokm(mySeat,x);}
+  else if(mq)mq.publish(T('act'),JSON.stringify({id:myId,t,x}),{qos:1});
+}
+
+/* ---------- drawing ---------- */
+function card(x,y,c,s,hl,dim){
+  const col=su(c)===1||su(c)===2?'#c0261f':'#1b1b1b';
+  return `<g transform="translate(${x},${y}) scale(${s})" opacity="${dim?.55:1}"><rect width="58" height="84" rx="7" fill="#fbf7ee" stroke="${hl?'#ffd400':'#8a8068'}" stroke-width="${hl?3.5:1.5}"/>`+
+    `<text x="6" y="19" font-size="17" font-weight="bold" fill="${col}">${RK[rk(c)]}</text><text x="6" y="36" font-size="16" fill="${col}">${SY[su(c)]}</text>`+
+    `<text x="29" y="66" font-size="30" text-anchor="middle" fill="${col}">${SY[su(c)]}</text></g>`;
+}
+const back=(x,y,w,h)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" fill="#2a4d8f" stroke="#fff" stroke-width="1.5"/><rect x="${x+3}" y="${y+3}" width="${w-6}" height="${h-6}" rx="2" fill="none" stroke="#9db6e6" stroke-width="1"/>`;
+function msgText(){
+  if(note)return note;
+  if(!G)return '';
+  const n=s=>G.nm[s],m=G.msg,mt=mySeat%2,team=t=>t===mt?'تیم شما':'تیم حریف';
+  if(G.ph==='wait')return 'منتظر ورود بازیکن‌ها…';
+  if(G.ph==='mend')return m&&m.k==='ff'?'⛔ '+n(m.p)+' '+AFK+' بار بازی نکرد؛ '+team(G.win)+' برنده شد':'🏆 '+team(G.win)+' برنده بازی شد';
+  if(G.ph==='hend')return m&&m.k==='hand'?team(m.t)+' این دست رو برد (+'+m.pts+' امتیاز'+(m.all?' — کوت!':'')+')':'';
+  let t=G.ph==='hokm'?n(G.hk)+' حاکمه و حکم رو انتخاب می‌کنه':'نوبت '+n(G.tn);
+  if(G.ph==='tend')t=n(trickWinner())+' این دست رو برد';
+  if(m&&m.k==='auto')t='⏱ زمان تمام شد؛ کامپیوتر به جای '+n(m.p)+' بازی کرد (اخطار '+m.n+' از '+AFK+')';
+  return t;
+}
+function render(){
+  let g='<ellipse cx="400" cy="225" rx="300" ry="150" fill="#226b46"/>';
+  const ph=G&&G.ph;
+  if(G&&ph!=='wait'){
+    const me=mySeat,rel=s=>(s-me+4)%4,mt=me%2;
+    const cnt=s=>ph==='hokm'?(s===G.hk?5:0):G.h[s].length;
+    // other players' hidden cards + names
+    for(let s=0;s<4;s++){
+      const r=rel(s),n=cnt(s);let lx,ly;
+      if(r===2){const x0=400-(13*(n-1)+26)/2;for(let i=0;i<n;i++)g+=back(x0+i*13,34,26,38);lx=400;ly=92;}
+      else if(r===1){for(let i=0;i<n;i++)g+=back(756,120+i*13,38,26);lx=775;ly=112;}
+      else if(r===3){for(let i=0;i<n;i++)g+=back(6,120+i*13,38,26);lx=25;ly=112;}
+      else{lx=70;ly=338;}
+      const act=(ph==='hokm'||ph==='play')&&G.tn===s;
+      g+=`<text x="${lx}" y="${ly}" text-anchor="middle" font-size="13" font-weight="${act?'bold':'normal'}" fill="${act?'#ffd400':'#efe6d0'}">${esc(G.nm[s])}${s===G.hk?' ★':''}</text>`;
+    }
+    // trick in the middle
+    const pos=[[379,248],[447,192],[379,136],[311,192]],win=ph==='tend'?trickWinner():-1;
+    G.cur.forEach(x=>{const p=pos[rel(x.p)];g+=card(p[0],p[1],x.c,.72,x.p===win);});
+    // my hand
+    const L=ph==='play'&&G.tn===me?legal(me):[],mine=(ph==='hokm'?(me===G.hk?G.f5:[]):G.h[me]).slice().sort((a,b)=>ORD.indexOf(su(a))*13+(12-rk(a))-(ORD.indexOf(su(b))*13+(12-rk(b))));
+    const n=mine.length,step=Math.min(52,(740)/Math.max(1,n-1)),x0=(800-(step*(n-1)+58))/2;
+    const hits=[];
+    mine.forEach((c,i)=>{
+      const ok=L.includes(c),dim=L.length&&!ok&&L.length<mine.length;
+      g+=card(x0+i*step,ok?340:354,c,1,false,dim);
+      if(ok)hits.push(`<rect data-i="c${c}" x="${x0+i*step}" y="330" width="58" height="104" fill="#000" fill-opacity="0"/>`);
+    });
+    g+=hits.join('');
+    // choose trump
+    if(ph==='hokm'&&me===G.hk){
+      g+='<text x="400" y="188" text-anchor="middle" font-size="18" fill="#fff">حکم رو انتخاب کن</text>';
+      for(let s=0;s<4;s++){const x=230+s*85;g+=`<rect x="${x}" y="200" width="72" height="72" rx="14" fill="#fbf7ee" stroke="#ffd400" stroke-width="3"/><text x="${x+36}" y="252" text-anchor="middle" font-size="44" fill="${s===1||s===2?'#c0261f':'#1b1b1b'}" pointer-events="none">${SY[s]}</text><rect data-i="s${s}" x="${x}" y="200" width="72" height="72" fill="#000" fill-opacity="0"/>`;}
+    }
+    // HUD
+    g+=`<text x="100" y="64" text-anchor="middle" font-size="14" fill="#efe6d0">امتیاز: ما ${G.sc[mt]} – آنها ${G.sc[1-mt]}</text><text x="100" y="84" text-anchor="middle" font-size="14" fill="#efe6d0">این دست: ${G.tw[mt]} – ${G.tw[1-mt]} (تا ${G.tg})</text>`;
+    if(G.tr>=0)g+=`<text x="756" y="60" text-anchor="middle" font-size="13" fill="#efe6d0">حکم</text><text x="756" y="96" text-anchor="middle" font-size="38" fill="${G.tr===1||G.tr===2?'#ff6b5e':'#fff'}">${SY[G.tr]}</text>`;
+    $('score').innerHTML=`دست ${G.hno}<br>ما ${G.sc[mt]} : ${G.sc[1-mt]} آنها<br>${G.nm[G.hk]} حاکمه`;
+  }
+  g+=`<text x="400" y="22" text-anchor="middle" font-size="16" fill="#efe6d0">${esc(msgText())}</text>`;
+  $('bd').innerHTML=g;
+  $('room').hidden=!(G&&G.ph==='wait'&&isHost&&mode==='online');
+  if(!$('room').hidden)$('rmsg').textContent='منتظر ورود بازیکن‌ها ('+Object.keys(G.sm).length+' از '+G.hs.length+')';
+  const nx=G&&isHost&&(G.ph==='hend'||G.ph==='mend');
+  $('next').hidden=!nx;$('next').textContent=G&&G.ph==='mend'?'🏠 بازی جدید':'دست بعدی ▶';
+}
+
+/* ---------- events ---------- */
+function link(){return APP_LINK?APP_LINK+'?startapp='+code:location.origin+location.pathname+'?room='+code;}
+function toggleMenu(o){const v=o===undefined?$('menu').hidden:o;$('menu').hidden=!v;$('scrim').hidden=!v;}
+function home(){toggleMenu(false);closeNet();gid++;G=null;note='';$('setup').hidden=false;render();}
+$('bd').addEventListener('click',e=>{
+  const v=e.target.dataset&&e.target.dataset.i;if(!v||!G)return;
+  if(v[0]==='c')act('play',+v.slice(1));else if(v[0]==='s')act('hokm',+v.slice(1));
+});
+$('rotbtn').onclick=flipScreen;$('rot2').onclick=flipScreen;
+$('lobby').onclick=$('lobby2').onclick=()=>{closeNet();location.href='index.html';};
+$('burger').onclick=()=>toggleMenu();$('scrim').onclick=()=>toggleMenu(false);$('home').onclick=home;
+$('next').onclick=()=>{if(G&&G.ph==='mend')home();else nextHand();};
+$('share').onclick=()=>{
+  const u='https://t.me/share/url?url='+encodeURIComponent(link())+'&text='+encodeURIComponent('بیا حکم بازی کنیم 🃏');
+  if(tg&&tg.openTelegramLink)tg.openTelegramLink(u);else window.open(u,'_blank');
+};
+$('copy').onclick=()=>{try{navigator.clipboard.writeText(link());$('copy').textContent='کپی شد ✓';}catch(e){prompt('لینک:',link());}};
+let selN=1,selT=7;
+for(let n=1;n<=7;n++){const b=document.createElement('button');b.textContent=n;b.dataset.t=n;b.style.cssText='width:42px;height:42px;padding:0;font-size:18px';if(n===selT)b.className='on';$('ts').appendChild(b);}
+$('ps').onclick=e=>{const n=e.target.dataset.n;if(!n)return;selN=+n;[...$('ps').children].forEach(b=>b.classList.toggle('on',+b.dataset.n===selN));};
+$('ts').onclick=e=>{const t=e.target.dataset.t;if(!t)return;selT=+t;[...$('ts').children].forEach(b=>b.classList.toggle('on',+b.dataset.t===selT));};
+$('go').onclick=()=>{
+  closeNet();gid++;isHost=true;mySeat=0;ver=0;note='';newGame(selN,selT);$('setup').hidden=true;
+  if(selN===1){mode='local';newHand(true);step();}else{mode='online';tryHost(0);}
+};
+setInterval(()=>{
+  const el=$('timer');
+  if(!G||!$('setup').hidden||!(G.ph==='hokm'||G.ph==='play')||bot(G.tn)){el.textContent='';return;}
+  const rem=Math.ceil((isHost?G.dl-Date.now():(G.dl-G.now)-(Date.now()-recv))/1000);
+  el.textContent=rem>0?'⏱ '+rem:'';el.className=rem<=5?'glass low':'glass';
+},250);
+function boot(){
+  render();
+  const sp=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.start_param;
+  const q=new URLSearchParams(location.search),room=sp||q.get('room')||q.get('tgWebAppStartParam');
+  if(room&&/^[0-2][a-z0-9]{5}$/.test(room))joinRoom(room);
+}
+boot();
+</script>
+</body>
+</html>
