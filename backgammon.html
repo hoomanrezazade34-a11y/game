@@ -54,6 +54,7 @@ button:disabled{opacity:.35}
     <div id="score"></div>
     <button id="mute">🔊 صدا</button>
     <button id="rotbtn">🔄 برعکس کردن صفحه</button>
+    <button id="lobby">🎮 لیست بازی‌ها</button>
     <button id="home">🏠 بازی جدید</button>
     <div id="info"></div>
   </div>
@@ -66,6 +67,7 @@ button:disabled{opacity:.35}
       <div class="row" id="ns"></div>
       <button id="go">شروع بازی</button>
       <button id="rot2" style="font-size:13px;opacity:.85">🔄 صفحه برعکسه؟ اینجا بزن</button>
+      <button id="lobby2" style="font-size:13px;opacity:.85">🎮 لیست بازی‌ها</button>
     </div>
   </div>
 </div>
@@ -527,6 +529,7 @@ function toggleMenu(open){const o=open===undefined?$('menu').hidden:open;$('menu
 $('burger').onclick=()=>toggleMenu();
 $('scrim').onclick=()=>toggleMenu(false);
 $('rotbtn').onclick=flipScreen;$('rot2').onclick=flipScreen;
+$('lobby').onclick=$('lobby2').onclick=()=>{closeNet();location.href='index.html';};
 function muteLabel(){$('mute').textContent=muted?'🔇 بی‌صدا':'🔊 صدا';}
 $('mute').onclick=()=>{muted=!muted;try{localStorage.setItem('nardMute',muted?'1':'0');}catch(e){}muteLabel();if(!muted)snd('move');};
 muteLabel();
