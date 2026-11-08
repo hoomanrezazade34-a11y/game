@@ -2,85 +2,50 @@
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>بازی تست</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>بازی‌ها</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  body {
-    margin: 0;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-family: Tahoma, Arial, sans-serif;
-    background: #1e2a3a;
-    color: #fff;
-    text-align: center;
-    user-select: none;
-  }
-  h1 { margin: 0 0 8px; font-size: 22px; }
-  #hello { margin-bottom: 20px; opacity: .8; font-size: 15px; }
-  #score { font-size: 56px; font-weight: bold; margin: 10px 0 24px; }
-  #btn {
-    width: 180px;
-    height: 180px;
-    border-radius: 50%;
-    border: none;
-    font-size: 64px;
-    background: #f5a623;
-    box-shadow: 0 8px 0 #c47f0c;
-    cursor: pointer;
-    transition: transform .05s, box-shadow .05s;
-  }
-  #btn:active {
-    transform: translateY(6px);
-    box-shadow: 0 2px 0 #c47f0c;
-  }
-  #reset {
-    margin-top: 30px;
-    padding: 10px 24px;
-    border: none;
-    border-radius: 10px;
-    background: #3b4b61;
-    color: #fff;
-    font-size: 15px;
-    cursor: pointer;
-  }
+:root{--saffron:#e0a526;--ivory:#efe6d0}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:#17110c;color:var(--ivory);font-family:Tahoma,Arial,sans-serif;user-select:none}
+#app{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:14px;background:radial-gradient(ellipse at 50% 30%,#3a2a1c 0%,#17110c 70%)}
+h1{margin:0;font-size:26px;letter-spacing:.5px}
+#cards{display:flex;gap:18px;width:100%;justify-content:center;height:58%;max-height:230px}
+.card{flex:1;max-width:290px;height:100%;border-radius:22px;border:1px solid rgba(255,255,255,.22);color:var(--ivory);font-family:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:12px;text-align:center;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.45);transition:transform .12s}
+.card:active{transform:scale(.96)}
+.card .ic{font-size:54px;line-height:1}
+.card .t{font-size:22px;font-weight:bold}
+.card .d{font-size:13px;opacity:.85;line-height:1.7}
+#c1{background:linear-gradient(160deg,#6b3d1f,#2f1b0d)}
+#c2{background:linear-gradient(160deg,#1f6b45,#0e2e1d)}
+#rot{background:none;border:0;color:var(--ivory);opacity:.6;font-size:13px;font-family:inherit;padding:6px}
 </style>
 </head>
 <body>
-  <h1>🎮 بازی تست</h1>
-  <div id="hello">سلام!</div>
-  <div id="score">0</div>
-  <button id="btn">⭐</button>
-  <button id="reset">شروع دوباره</button>
-
+<div id="app">
+  <h1>🎮 بازی‌ها</h1>
+  <div id="cards">
+    <button class="card" id="c1" data-go="backgammon.html"><span class="ic">🎲</span><span class="t">تخته نرد</span><span class="d">با کامپیوتر، دو نفره<br>یا آنلاین با دوست</span></button>
+    <button class="card" id="c2" data-go="hokm.html"><span class="ic">🃏</span><span class="t">حکم</span><span class="d">۱ تا ۴ نفره<br>جای خالی با کامپیوتر</span></button>
+  </div>
+  <button id="rot">🔄 صفحه برعکسه؟ اینجا بزن</button>
+</div>
 <script>
-  const tg = window.Telegram && window.Telegram.WebApp;
-  if (tg) {
-    tg.ready();
-    tg.expand();
-    const user = tg.initDataUnsafe && tg.initDataUnsafe.user;
-    if (user && user.first_name) {
-      document.getElementById('hello').textContent = 'سلام ' + user.first_name + '!';
-    }
-  }
-
-  let score = 0;
-  const scoreEl = document.getElementById('score');
-
-  document.getElementById('btn').addEventListener('click', () => {
-    score++;
-    scoreEl.textContent = score;
-    if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-  });
-
-  document.getElementById('reset').addEventListener('click', () => {
-    score = 0;
-    scoreEl.textContent = score;
-  });
+const tg=window.Telegram&&window.Telegram.WebApp;
+if(tg){try{tg.ready();tg.expand();if(tg.disableVerticalSwipes)tg.disableVerticalSwipes();}catch(e){}}
+const $=id=>document.getElementById(id);
+let rot=1;try{rot=localStorage.getItem('rotDir')==='-1'?-1:1;}catch(e){}
+function fit(){
+  const w=innerWidth,h=innerHeight,a=$('app').style;
+  a.cssText=h>w?(rot===1?`position:fixed;top:0;left:${w}px;width:${h}px;height:${w}px;transform-origin:0 0;transform:rotate(90deg)`
+                        :`position:fixed;top:${h}px;left:0;width:${h}px;height:${w}px;transform-origin:0 0;transform:rotate(-90deg)`)
+               :'position:fixed;top:0;left:0;width:100%;height:100%';
+}
+function flipScreen(){rot=-rot;try{localStorage.setItem('rotDir',rot);}catch(e){}fit();}
+addEventListener('resize',fit);fit();
+$('rot').onclick=flipScreen;
+document.querySelectorAll('.card').forEach(c=>c.onclick=()=>{location.href=c.dataset.go;});
 </script>
 </body>
 </html>
