@@ -327,7 +327,7 @@ function cutScene(){                            // افکت «بریدن»: فل
   g+=`<circle cx="${C[0]}" cy="${C[1]}" r="${18+e*95}" fill="none" stroke="#ffd45a" stroke-width="${1+6*(1-k)}" opacity="${op}"/><circle cx="${C[0]}" cy="${C[1]}" r="${8+e*60}" fill="none" stroke="${tr===1||tr===2?'#ff5a4a':'#fff'}" stroke-width="${1+4*(1-k)}" opacity="${op}"/>`;
   for(let i=0;i<10;i++){const a=i*Math.PI/5+.3,r1=24+e*40,r2=44+e*105;g+=`<line x1="${C[0]+Math.cos(a)*r1}" y1="${C[1]+Math.sin(a)*r1}" x2="${C[0]+Math.cos(a)*r2}" y2="${C[1]+Math.sin(a)*r2}" stroke="#ffd45a" stroke-width="3" stroke-linecap="round" opacity="${op}"/>`;}
   g+=`<text x="${C[0]}" y="${C[1]-4}" text-anchor="middle" dominant-baseline="central" font-size="${40+50*pop}" fill="${tr===1||tr===2?'#ff5a4a':'#fff'}" opacity="${op*.9}">${SY[tr]}</text>`;
-  g+=`<text x="400" y="150" text-anchor="middle" font-size="${24+8*pop}" font-weight="bold" fill="#ffd45a" stroke="#5a2a00" stroke-width="1.2" paint-order="stroke" opacity="${op2}">✂ ${esc(G.nm[cutFx.p])} بُرید!</text></g>`;
+  g+=`<text x="400" y="150" text-anchor="middle" font-size="${24+8*pop}" font-weight="bold" fill="#ffd45a" stroke="#5a2a00" stroke-width="1.2" paint-order="stroke" opacity="${op2}">${esc(G.nm[cutFx.p])} بُرید!</text></g>`;
   return g;
 }
 function piles(){
