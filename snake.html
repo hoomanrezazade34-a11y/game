@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>ماروپله</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<style>
+:root{--saffron:#e0a526;--ivory:#efe6d0}
+[hidden]{display:none!important}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:#08261d;color:var(--ivory);font-family:Tahoma,Arial,sans-serif;user-select:none;touch-action:manipulation}
+#app{position:fixed;top:0;left:0;width:100%;height:100%;overflow:hidden;background:#08261d}
+#stage,#bd,#bd0{position:absolute;inset:0;width:100%;height:100%}
+#bd0{pointer-events:none}
+@keyframes shk{0%,100%{transform:translate(0,0)}12%{transform:translate(-9px,5px) rotate(-.6deg)}26%{transform:translate(8px,-6px) rotate(.6deg)}40%{transform:translate(-6px,-4px)}55%{transform:translate(5px,4px)}75%{transform:translate(-3px,2px)}}
+#stage.shake{animation:shk .5s ease-out}
+button{font-family:inherit;font-size:15px;padding:10px 14px;border:0;border-radius:12px;background:rgba(255,255,255,.16);color:var(--ivory)}
+.glass{background:rgba(10,30,20,.6);-webkit-backdrop-filter:blur(16px) saturate(1.4);backdrop-filter:blur(16px) saturate(1.4);border:1px solid rgba(255,255,255,.25);color:var(--ivory);box-shadow:0 8px 30px rgba(0,0,0,.4)}
+.big{background:linear-gradient(#f0bd44,#d39a1e)!important;color:#2a1a0c;font-weight:bold;font-size:18px;padding:13px 22px;border-radius:16px}
+#burger{position:absolute;top:6px;left:6px;width:40px;height:40px;padding:0;font-size:22px;z-index:3}
+#timer{position:absolute;top:6px;left:54px;z-index:3;border-radius:12px;padding:4px 12px;font-size:18px;font-weight:bold;color:var(--saffron);pointer-events:none}
+#timer.low{color:#ff6b5e}
+#timer:empty{display:none}
+#next,#room{position:absolute;right:1.5%;bottom:3%;z-index:4}
+#room{border-radius:18px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;text-align:center;max-width:340px}
+#room .rrow{display:flex;gap:6px;justify-content:center}
+#room .big{font-size:14px;padding:9px 12px;border-radius:14px}
+#rmsg{font-size:12px;line-height:1.6}
+#scrim{position:absolute;inset:0;z-index:5}
+#menu{position:absolute;top:6px;left:6px;bottom:6px;width:min(280px,72%);border-radius:20px;padding:14px;z-index:6;display:flex;flex-direction:column;gap:9px;text-align:center;font-size:14px;animation:slide .2s ease-out}
+#menu h3{margin:0;font-size:17px}
+@keyframes slide{from{transform:translateX(-26px);opacity:0}to{transform:none;opacity:1}}
+#setup{position:absolute;inset:0;background:radial-gradient(ellipse at center,#1c6b52,#08261d);z-index:8;display:flex;align-items:center;justify-content:center;overflow:auto}
+#setup .box{display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center;padding:10px}
+#setup h2{margin:0;font-size:26px;color:var(--saffron)}
+#setup .row{display:flex;gap:5px;flex-wrap:wrap;justify-content:center;max-width:460px}
+#setup .row button{width:38px;height:38px;padding:0;font-size:16px}
+#setup button.on{background:var(--saffron);color:#2a1a0c;font-weight:bold}
+#setup small{opacity:.75}
+#go{font-size:17px;padding:11px 36px;background:var(--saffron);color:#2a1a0c;font-weight:bold}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage"><svg id="bd0" viewBox="0 0 800 440" preserveAspectRatio="xMidYMid meet"></svg><svg id="bd" viewBox="0 0 800 440" preserveAspectRatio="xMidYMid meet"></svg></div>
+  <button id="burger" class="glass">☰</button>
+  <div id="timer" class="glass"></div>
+  <button id="next" class="glass big" hidden>🏠 بازی جدید</button>
+  <div id="room" class="glass" hidden><div id="rmsg"></div><div class="rrow"><button id="share" class="big">📨 دعوت</button><button id="copy">🔗 کپی</button><button id="start" class="big">▶ شروع</button></div></div>
+  <div id="scrim" hidden></div>
+  <div id="menu" class="glass" hidden><h3>🐍 ماروپله</h3><button id="snd">🔊 صدا: روشن</button><button id="rotbtn">🔄 برعکس کردن صفحه</button><button id="lobby">🎮 لیست بازی‌ها</button><button id="home">🏠 بازی جدید</button></div>
+  <div id="setup"><div class="box">
+    <h2>🐍 ماروپله 🪜</h2>
+    <div>بازیکن واقعی</div><div class="row" id="hs"></div>
+    <div>کامپیوتر</div><div class="row" id="bs"></div>
+    <small id="tot"></small>
+    <button id="go">شروع بازی</button>
+    <button id="rot2" style="font-size:13px;opacity:.85">🔄 صفحه برعکسه؟ اینجا بزن</button>
+    <button id="lobby2" style="font-size:13px;opacity:.85">🎮 لیست بازی‌ها</button>
+  </div></div>
+</div>
+<script>
+const tg=window.Telegram&&window.Telegram.WebApp;
+if(tg){try{tg.ready();tg.expand();if(tg.disableVerticalSwipes)tg.disableVerticalSwipes();}catch(e){}}
+const $=id=>document.getElementById(id);
+const APP_LINK='https://t.me/Dongbegir_bot/snake';
+const ENTER=6,TRIES=1;   // برای ورود فقط ۶ (TRIES=1 یعنی هر نوبت فقط یه بار)
+const LIMIT=15,DICE=800,HOP=260,JUMP=800;
+const BROKERS=['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://test.mosquitto.org:8081'];
+const ALPHA='abcdefghjkmnpqrstuvwxyz23456789';
+const X0=44,Y0=30,S=38;
+const LAD={4:14,9:31,21:42,28:84,36:44,51:67,71:91,80:100};
+const SNK={16:6,47:26,49:11,56:53,62:19,64:60,87:24,93:73,95:75,98:78};
+const JMP=Object.assign({},LAD,SNK);
+const COL=['#e53935','#1e88e5','#43a047','#fdd835','#8e24aa','#fb8c00','#00acc1','#6d4c41','#ec407a','#607d8b'];
+const SC=['#2e9e4f','#d9822b','#8e44ad','#c0392b','#2a8fbd'];
+const myId=(()=>{try{let i=localStorage.getItem('snId');if(!i){i=Math.random().toString(36).slice(2,10);localStorage.setItem('snId',i);}return i;}catch(e){return Math.random().toString(36).slice(2,10);}})();
+const myName=(()=>{const u=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user;return u?String(u.first_name||u.username||u.last_name||'من').slice(0,16):'من';})();
+let G=null,isHost=true,mySeat=0,mode='local',code='',mq=null,ver=0,gid=0,note='',recv=0,evn=0,lastEv=0,anim=null,conf=null,lastR=0;
+const bot=s=>!G.hs.includes(s);
+let RIG=null;   // کمک مخفی (فقط روی میزبان، توی state ارسالی نیست): بعد از چند بار ۶ نیاوردن شانس ۶ بالا می‌ره
+const esc=t=>String(t).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+let rot=1;try{rot=localStorage.getItem('rotDir')==='-1'?-1:1;}catch(e){}
+function fit(){
+  const w=innerWidth,h=innerHeight,a=$('app').style;
+  a.cssText=h>w?(rot===1?`position:fixed;top:0;left:${w}px;width:${h}px;height:${w}px;transform-origin:0 0;transform:rotate(90deg)`
+                        :`position:fixed;top:${h}px;left:0;width:${h}px;height:${w}px;transform-origin:0 0;transform:rotate(-90deg)`)
+               :'position:fixed;top:0;left:0;width:100%;height:100%';
+}
+function flipScreen(){rot=-rot;try{localStorage.setItem('rotDir',rot);}catch(e){}fit();}
+addEventListener('resize',fit);fit();
+
+/* ---------- sound (synthesized) ---------- */
+let AC=null,mute=false,NB=null;
+function ac(){if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}}if(AC&&AC.state==='suspended')AC.resume();return AC;}
+function nz(t0,d,f,v,type,q){
+  if(!AC||mute)return;
+  if(!NB){NB=AC.createBuffer(1,AC.sampleRate,AC.sampleRate);const x=NB.getChannelData(0);for(let i=0;i<x.length;i++)x[i]=Math.random()*2-1;}
+  const s=AC.createBufferSource();s.buffer=NB;s.loop=true;
+  const fl=AC.createBiquadFilter();fl.type=type||'bandpass';fl.frequency.value=f;fl.Q.value=q||.8;
+  const g=AC.createGain();g.gain.setValueAtTime(.0001,t0);g.gain.linearRampToValueAtTime(v,t0+.003);g.gain.exponentialRampToValueAtTime(.0005,t0+d);
+  s.connect(fl);fl.connect(g);g.connect(AC.destination);s.start(t0,Math.random()*.5);s.stop(t0+d+.02);
+}
+function tone(t0,fr,d,v,ty){
+  if(!AC||mute)return;
+  const o=AC.createOscillator(),g=AC.createGain();o.type=ty||'sine';o.frequency.value=fr;
+  g.gain.setValueAtTime(v,t0);g.gain.exponentialRampToValueAtTime(.001,t0+d);
+  o.connect(g);g.connect(AC.destination);o.start(t0);o.stop(t0+d);
+}
+function sweep(t0,f1,f2,d,v,ty){
+  if(!AC||mute)return;
+  const o=AC.createOscillator(),g=AC.createGain();o.type=ty||'sawtooth';
+  o.frequency.setValueAtTime(f1,t0);o.frequency.exponentialRampToValueAtTime(f2,t0+d);
+  g.gain.setValueAtTime(v,t0);g.gain.exponentialRampToValueAtTime(.001,t0+d);
+  o.connect(g);g.connect(AC.destination);o.start(t0);o.stop(t0+d);
+}
+const sRattle=t=>{for(let i=0;i<13;i++){const x=t+i*.055+Math.random()*.02;nz(x,.03,1500+Math.random()*2000,.12+.1*Math.random(),'bandpass',1.5);nz(x+.004,.025,500,.1,'lowpass');}nz(t+.76,.05,450,.3,'lowpass');};
+const sHop=t=>{nz(t,.035,900,.3,'lowpass');nz(t,.015,3200,.1,'highpass');};
+const sLadder=t=>[523,659,784,988,1175].forEach((f,i)=>tone(t+i*.07,f,.2,.12,'triangle'));
+const sSnake=t=>{sweep(t,520,110,.6,.1,'sawtooth');nz(t,.5,3800,.12,'highpass',.7);};
+const sWin=t=>[523,659,784,1047,1319].forEach((f,i)=>tone(t+i*.11,f,.4,.14,'triangle'));
+
+/* ---------- game engine (host) ---------- */
+function newGame(H,B){
+  const np=H+B;
+  G={ph:'wait',np,hs:[...Array(H).keys()],sm:{[myId]:0},pos:Array(np).fill(0),rank:[],tn:0,die:0,ev:null,v:0,dl:0,now:0,
+     nm:[...Array(np).keys()].map(s=>s===0?myName:s<H?'منتظر ورود…':'کامپیوتر '+(s-H+1))};
+  evn=0;lastEv=0;anim=null;conf=null;
+  RIG={fl:Array(np).fill(0),k1:[],k2:[]};
+  for(let i=0;i<np;i++){RIG.k1[i]=2+(Math.random()*4|0);RIG.k2[i]=RIG.k1[i]+1+(Math.random()*3|0);}   // هر بازیکن یه آستانه‌ی تصادفی داره
+}
+function begin(){G.ph='roll';G.tn=0;step();}
+function startGame(){
+  if(!isHost||!G||G.ph!=='wait')return;
+  const occ=Object.values(G.sm).sort((a,b)=>a-b);G.hs=occ;
+  let k=0;for(let s=0;s<G.np;s++)if(!occ.includes(s))G.nm[s]='کامپیوتر '+(++k);   // جای خالی‌ها رو کامپیوتر پر می‌کنه
+  begin();
+}
+function doRoll(s,auto){
+  if(!G||G.ph!=='roll'||G.tn!==s)return;
+  const from=G.pos[s];let d=1+Math.random()*6|0;
+  if(from===0&&RIG){                                       // هنوز وارد نشده: بعد از k1 بار نیاوردن ۵۰٪، بعد از k2 بار ۷۵٪ شانس ۶
+    const f=RIG.fl[s],p=f>=RIG.k2[s]?.75:f>=RIG.k1[s]?.5:0;
+    if(p)d=Math.random()<p?6:1+(Math.random()*5|0);
+    if(d<ENTER)RIG.fl[s]++;
+  }
+  const t=from===0?(d>=ENTER?1:0):from+d,path=[];let jump=-1;   // برای ورود به بازی اول باید ENTER یا بیشتر بیاری
+  if(t>0&&t<=100){for(let i=from+1;i<=t;i++)path.push(i);if(JMP[t]!==undefined)jump=JMP[t];}   // بیشتر از ۱۰۰ بیاد، جا نمی‌ره (عدد دقیق لازمه)
+  const fin=jump>=0?jump:path.length?t:from;
+  G.pos[s]=fin;G.die=d;G.ev={n:++evn,p:s,d,from,path,jump,auto:auto?1:0};
+  if(fin===100)G.rank.push(s);
+  G.ph='move';step();
+}
+function afterMove(){
+  const s=G.ev.p,n=G.np,left=[...Array(n).keys()].filter(i=>!G.rank.includes(i));
+  if(left.length<=1){if(left.length)G.rank.push(left[0]);G.ph='end';step();return;}
+  let again=G.ev.d===6&&!G.rank.includes(s);                 // ۶ بیاری دوباره می‌اندازی
+  if(G.pos[s]===0&&!again){G.att=(G.att||0)+1;if(G.att<TRIES)again=true;else G.att=0;}   // هنوز وارد نشده: تا ۳ بار تلاش
+  else G.att=0;
+  let nx=s;
+  if(!again){do nx=(nx+1)%n;while(G.rank.includes(nx));}
+  G.tn=nx;G.ph='roll';step();
+}
+function step(){
+  G.now=Date.now();G.dl=G.now+LIMIT*1000;
+  if(mode==='online'&&mq){G.v=++ver;mq.publish(T('st'),JSON.stringify(G),{qos:1,retain:true});}
+  render();
+  gid++;const g=gid,L=(f,ms)=>setTimeout(()=>{if(g===gid)f();},ms);
+  if(G.ph==='roll'){const s=G.tn;if(bot(s))L(()=>doRoll(s),900+Math.random()*600);else L(()=>doRoll(s,1),LIMIT*1000);}
+  else if(G.ph==='move'){const e=G.ev;L(afterMove,DICE+e.path.length*HOP+(e.jump>=0?JUMP:0)+700);}
+}
+
+/* ---------- online (MQTT relay) ---------- */
+const T=s=>'snk/'+code+'/'+s;
+function closeNet(){try{if(mq)mq.end(true);}catch(e){}mq=null;}
+function mqConnect(i,ok,fail){
+  if(typeof mqtt==='undefined'){fail();return;}
+  let done=false;
+  const c=mqtt.connect(BROKERS[i],{clientId:'sn'+myId+i,connectTimeout:6000,reconnectPeriod:3000});
+  const t=setTimeout(()=>{if(!done){done=true;try{c.end(true);}catch(e){}fail();}},7000);
+  c.on('connect',()=>{
+    if(!done){done=true;clearTimeout(t);mq=c;ok();}
+    if(c!==mq)return;
+    if(isHost){c.subscribe(T('hi'),{qos:1});c.subscribe(T('act'),{qos:1});}
+    else{c.subscribe(T('st'),{qos:1});c.publish(T('hi'),JSON.stringify({id:myId,name:myName}),{qos:1});}
+  });
+  c.on('error',()=>{});
+  c.on('message',(tp,m)=>{
+    if(c!==mq)return;let o;try{o=JSON.parse(m.toString());}catch(e){return;}
+    if(tp.endsWith('/st'))onSt(o);else if(tp.endsWith('/hi'))onHi(o);else if(tp.endsWith('/act'))onAct(o);
+  });
+}
+function onHi(o){
+  if(!isHost||!G)return;
+  if(G.sm[o.id]===undefined){
+    const occ=Object.values(G.sm),free=G.hs.find(s=>!occ.includes(s));
+    if(free===undefined||G.ph!=='wait')return;
+    G.sm[o.id]=free;
+  }
+  if(o.name)G.nm[G.sm[o.id]]=String(o.name).slice(0,16);
+  if(G.ph==='wait')step();
+  else if(mode==='online'&&mq){G.now=Date.now();G.v=++ver;mq.publish(T('st'),JSON.stringify(G),{qos:1,retain:true});}
+}
+function onAct(o){
+  if(!isHost||!G)return;const s=G.sm[o.id];
+  if(s!==undefined&&o.t==='roll')doRoll(s);
+}
+function onSt(o){
+  if(isHost||o.v<=ver)return;
+  ver=o.v;G=o;recv=Date.now();mySeat=G.sm[myId];
+  note=mySeat===undefined?'این اتاق پر است.':'';
+  if(mySeat===undefined)mySeat=0;
+  render();
+}
+function tryHost(i){
+  if(i>=BROKERS.length){note='اتصال به سرور بازی برقرار نشد. اینترنت یا فیلترشکن رو چک کن.';render();return;}
+  code=i+Array.from({length:5},()=>ALPHA[Math.random()*ALPHA.length|0]).join('');
+  note='در حال ساخت اتاق…';render();
+  mqConnect(i,()=>{note='';step();},()=>tryHost(i+1));
+}
+function joinRoom(cd){
+  closeNet();isHost=false;mode='online';code=cd;G=null;ver=0;lastEv=-1;anim=null;note='در حال اتصال…';$('setup').hidden=true;render();
+  mqConnect(+cd[0],()=>{},()=>{note='اتصال به سرور بازی برقرار نشد.';render();});
+  setTimeout(()=>{if(!G){note='اتصال برقرار نشد. مطمئن شو میزبان بازی رو باز گذاشته.';render();}},15000);
+}
+function act(t){
+  if(!G)return;
+  if(isHost)doRoll(mySeat);
+  else if(mq)mq.publish(T('act'),JSON.stringify({id:myId,t}),{qos:1});
+}
+
+/* ---------- board (static layer) ---------- */
+function cxy(n){
+  if(n<=0)return [18,Y0+9*S+S/2];
+  const r=(n-1)/10|0;let c=(n-1)%10;if(r%2)c=9-c;
+  return [X0+c*S+S/2,Y0+(9-r)*S+S/2];
+}
+function drawBoard(){
+  let g='<defs><linearGradient id="wd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9a652f"/><stop offset="1" stop-color="#4a2a10"/></linearGradient><radialGradient id="bg" cx=".5" cy=".5" r=".8"><stop offset="0" stop-color="#1f7a5c"/><stop offset="1" stop-color="#06201a"/></radialGradient><linearGradient id="dc" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#d9d9d9"/></linearGradient></defs>';
+  g+='<rect width="800" height="440" fill="url(#bg)"/><rect x="34" y="20" width="400" height="400" rx="14" fill="url(#wd)"/><rect x="40" y="26" width="388" height="388" rx="8" fill="#2a1608"/><rect x="446" y="14" width="344" height="298" rx="14" fill="rgba(0,0,0,.28)"/>';
+  for(let n=1;n<=100;n++){
+    const [cx,cy]=cxy(n),r=(n-1)/10|0,c=(n-1)%10,f=n===100?'#ffd54a':n===1?'#a8e6a1':(r+c)%2?'#f4e4b6':'#e3c88a';
+    g+=`<rect x="${cx-S/2}" y="${cy-S/2}" width="${S}" height="${S}" fill="${f}" stroke="#b8985a" stroke-width=".6"/><text x="${cx-S/2+3.5+String(n).length*2.7}" y="${cy-S/2+10.5}" text-anchor="middle" font-size="9" fill="#7a5a2a">${n}</text>`;
+  }
+  g+=`<text x="${cxy(100)[0]}" y="${cxy(100)[1]+8}" text-anchor="middle" font-size="22" fill="#a05a00">★</text><text x="18" y="428" text-anchor="middle" font-size="10" fill="#efe6d0">شروع</text>`;
+  for(const a in LAD){                                    // نردبون‌ها
+    const A=cxy(+a),B=cxy(LAD[a]),dx=B[0]-A[0],dy=B[1]-A[1],L=Math.hypot(dx,dy),ux=dx/L,uy=dy/L,px=-uy*5,py=ux*5;
+    const s1=[A[0]+ux*8,A[1]+uy*8],e1=[B[0]-ux*8,B[1]-uy*8];
+    for(const w of [[7,'#3b1f0a'],[3.6,'#b9793a']])g+=`<path d="M${s1[0]+px} ${s1[1]+py}L${e1[0]+px} ${e1[1]+py}M${s1[0]-px} ${s1[1]-py}L${e1[0]-px} ${e1[1]-py}" stroke="${w[1]}" stroke-width="${w[0]}" stroke-linecap="round" fill="none"/>`;
+    const n=Math.max(2,L/15|0);let r='';
+    for(let k=1;k<n;k++){const f=k/n,x=s1[0]+(e1[0]-s1[0])*f,y=s1[1]+(e1[1]-s1[1])*f;r+=`M${x+px} ${y+py}L${x-px} ${y-py}`;}
+    g+=`<path d="${r}" stroke="#e8a862" stroke-width="3" stroke-linecap="round" fill="none"/>`;
+  }
+  let si=0;
+  for(const a in SNK){                                    // مارها
+    const A=cxy(+a),B=cxy(SNK[a]),dx=B[0]-A[0],dy=B[1]-A[1],L=Math.hypot(dx,dy),amp=Math.min(26,L*.22),px=-dy/L*amp,py=dx/L*amp,col=SC[si++%5];
+    const d=`M${A[0]} ${A[1]}C${A[0]+dx*.33+px} ${A[1]+dy*.33+py} ${A[0]+dx*.66-px} ${A[1]+dy*.66-py} ${B[0]} ${B[1]}`;
+    g+=`<path d="${d}" fill="none" stroke="#12301a" stroke-width="11.5" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${col}" stroke-width="8.5" stroke-linecap="round"/><path d="${d}" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="8.5" stroke-dasharray="2.5 8"/>`;
+    const tx=dx*.33+px,ty=dy*.33+py,tl=Math.hypot(tx,ty),hx=-tx/tl,hy=-ty/tl,nx=-hy,ny=hx,ex=A[0]+hx*2,ey=A[1]+hy*2;
+    g+=`<path d="M${A[0]+hx*8} ${A[1]+hy*8}L${A[0]+hx*14} ${A[1]+hy*14}M${A[0]+hx*14} ${A[1]+hy*14}l${hx*3+nx*3} ${hy*3+ny*3}M${A[0]+hx*14} ${A[1]+hy*14}l${hx*3-nx*3} ${hy*3-ny*3}" stroke="#d32f2f" stroke-width="1.6" fill="none" stroke-linecap="round"/><circle cx="${A[0]}" cy="${A[1]}" r="8" fill="${col}" stroke="#12301a" stroke-width="2"/>`;
+    for(const k of [-1,1])g+=`<circle cx="${ex+nx*3.4*k}" cy="${ey+ny*3.4*k}" r="2.4" fill="#fff"/><circle cx="${ex+nx*3.4*k+hx*.8}" cy="${ey+ny*3.4*k+hy*.8}" r="1.1" fill="#000"/>`;
+  }
+  $('bd0').innerHTML=g;
+}
+
+/* ---------- drawing (dynamic layer) ---------- */
+function tokXY(s,now){
+  if(!anim||anim.p!==s||now>=anim.end)return null;
+  const e=anim.e,t=now-anim.t0-DICE,L=e.path.length;
+  if(t<0||(!L&&e.jump<0))return cxy(e.from);
+  if(t<L*HOP){const i=t/HOP|0,f=t/HOP-i,a=cxy(i?e.path[i-1]:e.from),b=cxy(e.path[i]);return [a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f-Math.sin(f*Math.PI)*12];}
+  if(e.jump>=0){const f=Math.min(1,(t-L*HOP)/JUMP),k=f*f*(3-2*f),a=cxy(e.path[L-1]),b=cxy(e.jump);return [a[0]+(b[0]-a[0])*k,a[1]+(b[1]-a[1])*k];}
+  return null;
+}
+function token(x,y,c,n,cur,t){
+  return `<ellipse cx="${x}" cy="${y+7}" rx="7" ry="3" fill="#000" opacity=".35"/>${cur?`<circle cx="${x}" cy="${y}" r="${11.5+Math.sin(t/160)*1.5}" fill="none" stroke="#ffd54a" stroke-width="2.4"/>`:''}<circle cx="${x}" cy="${y}" r="8" fill="${c}" stroke="#fff" stroke-width="2"/><circle cx="${x-2.5}" cy="${y-3}" r="2.6" fill="#fff" opacity=".45"/><text x="${x}" y="${y+3.5}" text-anchor="middle" font-size="9" font-weight="bold" fill="#fff" stroke="#0006" stroke-width=".5">${n}</text>`;
+}
+function dice(cx,cy,s,v,rot){
+  let b=`<g transform="translate(${cx},${cy}) rotate(${rot})"><rect x="${-s/2+2}" y="${-s/2+4}" width="${s}" height="${s}" rx="${s*.2}" fill="#000" opacity=".35"/><rect x="${-s/2}" y="${-s/2}" width="${s}" height="${s}" rx="${s*.2}" fill="url(#dc)" stroke="#aaa"/>`;
+  const u=s/4,P={1:[[2,2]],2:[[1,1],[3,3]],3:[[1,1],[2,2],[3,3]],4:[[1,1],[3,1],[1,3],[3,3]],5:[[1,1],[3,1],[2,2],[1,3],[3,3]],6:[[1,1],[3,1],[1,2],[3,2],[1,3],[3,3]]};
+  if(!v)b+=`<text y="9" text-anchor="middle" font-size="26" fill="#888">?</text>`;
+  (P[v]||[]).forEach(p=>b+=`<circle cx="${(p[0]-2)*u}" cy="${(p[1]-2)*u}" r="${s*.075}" fill="${v===1?'#d32f2f':'#222'}"/>`);
+  return b+'</g>';
+}
+function msgText(){
+  if(note)return note;
+  if(!G)return '';
+  const n=s=>G.nm[s],e=G.ev;
+  if(G.ph==='wait')return isHost?'منتظر ورود دوستان… بعد شروع بزن':'منتظر شروع بازی توسط میزبان…';
+  if(G.ph==='end')return '🏁 بازی تموم شد — برنده: '+n(G.rank[0]);
+  if(G.ph==='move'){                              // تا تاس نایستاده، عدد و نتیجه لو نره
+    const t=anim&&anim.e.n===e.n?Date.now()-anim.t0:1e9,L=e.path.length,hopEnd=DICE+L*HOP;
+    if(t<DICE)return '🎲 '+n(e.p)+' تاس می‌ندازه…';
+    let x=(e.auto?'⏱ ':'')+n(e.p)+' '+e.d+' آورد';
+    if(!L)x+=e.from===0?' — برای ورود باید '+(ENTER<6?ENTER+' یا ۶':'۶')+' بیاره':' — عدد دقیق لازمه';
+    else if(e.from===0)x+=' — وارد بازی شد! 🎯';
+    if(t>=hopEnd&&e.jump>=0)x+=e.jump>e.path[L-1]?' — نردبون! 🪜':' — مار گازش گرفت! 🐍';
+    if(t>=hopEnd+(e.jump>=0?JUMP:0)&&G.pos[e.p]===100)x+=' — به ۱۰۰ رسید! 🎉';
+    return x;
+  }
+  return 'نوبت '+n(G.tn)+(G.tn===mySeat?' — تاس بنداز!':'')+(G.pos[G.tn]===0&&G.att>0?' (تلاش '+(G.att+1)+' از '+TRIES+')':e&&e.d===6&&e.p===G.tn?' (۶ آورد، دوباره)':'');
+}
+function fx(){
+  if(!G)return;ac();
+  if(lastEv<0){lastEv=G.ev?G.ev.n:0;return;}
+  if(G.ev&&G.ev.n!==lastEv){
+    lastEv=G.ev.n;const e=G.ev,now=Date.now(),L=e.path.length,tj=DICE+L*HOP;
+    anim={t0:now,p:e.p,e,end:now+tj+(e.jump>=0?JUMP:0)};
+    if(AC&&!mute){
+      const t=AC.currentTime;sRattle(t);
+      e.path.forEach((_,i)=>sHop(t+(DICE+i*HOP)/1000+.08));
+      if(e.jump>=0){if(e.jump>e.path[L-1])sLadder(t+tj/1000);else sSnake(t+tj/1000);}
+      if(G.pos[e.p]===100)sWin(t+(tj+(e.jump>=0?JUMP:0))/1000);
+    }
+    if(e.jump>=0&&e.jump<e.path[L-1])setTimeout(shake,tj+250);
+    if(G.pos[e.p]===100)setTimeout(confetti,anim.end-now);
+  }
+}
+function shake(){const b=$('stage');b.classList.remove('shake');void b.getBoundingClientRect();b.classList.add('shake');setTimeout(()=>b.classList.remove('shake'),520);try{tg.HapticFeedback.impactOccurred('heavy');}catch(e){}}
+function confetti(){conf={t0:Date.now(),p:Array.from({length:60},()=>({x:240,y:260,vx:(Math.random()-.4)*420,vy:-(150+Math.random()*300),c:COL[Math.random()*10|0],r:Math.random()*360}))};}
+function render(){
+  fx();
+  const now=Date.now();let g='';
+  if(anim&&now>anim.end+40)anim=null;
+  if(!G){
+    $('bd').innerHTML=note?`<text x="400" y="225" text-anchor="middle" font-size="18" fill="#efe6d0">${esc(note)}</text>`:'';
+    $('room').hidden=true;$('next').hidden=true;return;
+  }
+  const me=mySeat,cur=G.ph==='roll'?G.tn:G.ph==='move'?G.ev.p:-1;
+  // tokens
+  const groups={},st=[],mv=[];
+  for(let s=0;s<G.np;s++){const xy=tokXY(s,now);if(xy)mv.push([s,xy[0],xy[1]]);else(groups[G.pos[s]]=groups[G.pos[s]]||[]).push(s);}
+  for(const p in groups){
+    const a=groups[p],n=a.length,[bx,by]=cxy(+p);
+    a.forEach((s,k)=>st.push([s,bx+(n>1?((k%3)-1)*10:0),by+(n>1?((k/3|0)-(Math.ceil(n/3)-1)/2)*10:0)]));
+  }
+  st.sort((a,b)=>a[2]-b[2]);
+  st.concat(mv).forEach(([s,x,y])=>g+=token(x,y,COL[s],s+1,cur===s,now));
+  // players list
+  const rows=G.ph==='end'?G.rank:[...Array(G.np).keys()],occ=Object.values(G.sm);
+  rows.forEach((s,i)=>{
+    const y=18+i*29,c=cur===s,busy=anim&&anim.p===s,shown=busy?anim.e.from:G.pos[s],rk=busy?-1:G.rank.indexOf(s);
+    const nm=esc(G.nm[s])+(s===me?' (شما)':''),w=G.ph==='wait'&&G.hs.includes(s)&&!occ.includes(s);
+    g+=`<rect x="452" y="${y}" width="332" height="26" rx="9" fill="${c?'rgba(255,213,74,.22)':'rgba(0,0,0,.3)'}" stroke="${c?'#ffd54a':'none'}"/><circle cx="770" cy="${y+13}" r="8" fill="${COL[s]}" stroke="#fff"/><text x="770" y="${y+17}" text-anchor="middle" font-size="9" font-weight="bold" fill="#fff">${s+1}</text><text x="754" y="${y+18}" font-size="13" fill="${w?'#999':'#fff'}">${nm}</text><text x="462" y="${y+18}" text-anchor="end" font-size="12" fill="#ffd45a">${rk>=0?(['🥇','🥈','🥉'][rk]||'رتبه '+(rk+1)):G.ph==='wait'?'':shown?'خونه '+shown:'شروع'}</text>`;
+  });
+  // message, dice, roll button
+  g+=`<text x="618" y="326" text-anchor="middle" font-size="13" fill="#efe6d0">${esc(msgText())}</text>`;
+  const rolling=anim&&now-anim.t0<DICE;
+  if(G.ph!=='wait'){
+    let dv=G.die||0,rt=0,dy=0;
+    if(rolling){const t=now-anim.t0;dv=((t/75|0)*7)%6+1;rt=Math.sin(t/38)*24;dy=-Math.abs(Math.sin(t/120))*20*(1-t/DICE);}
+    const my=G.ph==='roll'&&G.tn===me&&!rolling;
+    g+=dice(500,372+dy,56,dv,rt);
+    g+=`<rect x="560" y="346" width="214" height="52" rx="16" fill="${my?'#e0a526':'rgba(255,255,255,.12)'}" opacity="${my?.85+.15*Math.sin(now/200):1}"/><text x="667" y="379" text-anchor="middle" font-size="17" font-weight="bold" fill="${my?'#2a1a0c':'#aaa'}">${my?'🎲 تاس بنداز':G.ph==='roll'?esc(G.nm[G.tn])+' …':''}</text>`;
+    if(my)g+=`<rect data-i="roll" x="560" y="346" width="214" height="52" fill="#000" fill-opacity="0"/><rect data-i="roll" x="466" y="338" width="68" height="68" fill="#000" fill-opacity="0"/>`;
+  }
+  if(conf){const t=(now-conf.t0)/1000;if(t>2.8)conf=null;else conf.p.forEach(q=>{const x=q.x+q.vx*t,y=q.y+q.vy*t+420*t*t;g+=`<rect x="${x}" y="${y}" width="7" height="4" fill="${q.c}" opacity="${Math.min(1,2.8-t)}" transform="rotate(${q.r+t*320} ${x} ${y})"/>`;});}
+  $('bd').innerHTML=g;
+  $('room').hidden=!(G.ph==='wait'&&isHost&&mode==='online');
+  if(!$('room').hidden){const j=Object.keys(G.sm).length;$('rmsg').textContent='وارد شده: '+j+' از '+G.hs.length+' بازیکن واقعی';$('start').textContent=j<G.hs.length?'▶ شروع با کامپیوتر':'▶ شروع بازی';}
+  $('next').hidden=!(isHost&&G.ph==='end'&&!rolling);
+}
+(function tick(){const n=Date.now();if(G&&(anim||conf||(G.ph==='roll'&&n-lastR>100))){lastR=n;render();}requestAnimationFrame(tick);})();
+
+/* ---------- events ---------- */
+function link(){return APP_LINK?APP_LINK+'?startapp='+code:location.origin+location.pathname+'?room='+code;}
+function toggleMenu(o){const v=o===undefined?$('menu').hidden:o;$('menu').hidden=!v;$('scrim').hidden=!v;}
+function home(){toggleMenu(false);closeNet();gid++;G=null;note='';anim=null;conf=null;lastEv=0;$('setup').hidden=false;render();}
+addEventListener('pointerdown',ac,{once:true});
+$('snd').onclick=()=>{mute=!mute;$('snd').textContent=mute?'🔇 صدا: خاموش':'🔊 صدا: روشن';};
+$('bd').addEventListener('click',e=>{if(e.target.dataset&&e.target.dataset.i==='roll')act('roll');});
+$('rotbtn').onclick=flipScreen;$('rot2').onclick=flipScreen;
+$('lobby').onclick=$('lobby2').onclick=()=>{closeNet();location.href='index.html';};
+$('burger').onclick=()=>toggleMenu();$('scrim').onclick=()=>toggleMenu(false);$('home').onclick=home;
+$('next').onclick=home;$('start').onclick=startGame;
+$('share').onclick=()=>{
+  const u='https://t.me/share/url?url='+encodeURIComponent(link())+'&text='+encodeURIComponent('بیا ماروپله بازی کنیم 🐍🪜');
+  if(tg&&tg.openTelegramLink)tg.openTelegramLink(u);else window.open(u,'_blank');
+};
+$('copy').onclick=()=>{try{navigator.clipboard.writeText(link());$('copy').textContent='کپی شد ✓';}catch(e){prompt('لینک:',link());}};
+let selH=1,selB=3;
+function upd(){
+  if(selH+selB>10)selB=10-selH;if(selH+selB<2)selB=2-selH;
+  [...$('hs').children].forEach(b=>b.classList.toggle('on',+b.dataset.n===selH));
+  [...$('bs').children].forEach(b=>b.classList.toggle('on',+b.dataset.n===selB));
+  $('tot').textContent='مجموع: '+(selH+selB)+' نفر'+(selH>1?' — برای دوستات لینک دعوت ساخته می‌شه':'');
+}
+for(let n=1;n<=10;n++){const b=document.createElement('button');b.textContent=n;b.dataset.n=n;$('hs').appendChild(b);}
+for(let n=0;n<=9;n++){const b=document.createElement('button');b.textContent=n;b.dataset.n=n;$('bs').appendChild(b);}
+$('hs').onclick=e=>{const n=e.target.dataset.n;if(!n)return;selH=+n;upd();};
+$('bs').onclick=e=>{const n=e.target.dataset.n;if(!n)return;selB=+n;upd();};
+upd();
+$('go').onclick=()=>{
+  ac();closeNet();gid++;isHost=true;mySeat=0;ver=0;note='';newGame(selH,selB);$('setup').hidden=true;
+  if(selH===1){mode='local';begin();}else{mode='online';tryHost(0);}
+};
+setInterval(()=>{
+  const el=$('timer');
+  if(!G||!$('setup').hidden||G.ph!=='roll'||bot(G.tn)){el.textContent='';return;}
+  const rem=Math.ceil((isHost?G.dl-Date.now():(G.dl-G.now)-(Date.now()-recv))/1000);
+  el.textContent=rem>0?'⏱ '+rem:'';el.className=rem<=5?'glass low':'glass';
+},250);
+function boot(){
+  drawBoard();render();
+  const sp=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.start_param;
+  const q=new URLSearchParams(location.search),room=sp||q.get('room')||q.get('tgWebAppStartParam');
+  if(room&&/^[0-2][a-z0-9]{5}$/.test(room))joinRoom(room);
+}
+boot();
+</script>
+</body>
+</html>
