@@ -59,7 +59,7 @@ button{font-family:inherit;font-size:15px;padding:10px 14px;border:0;border-radi
   <div id="rank" class="glass" hidden><h3>🏆 نتیجه بازی</h3><div id="rlist"></div><button id="rhome" class="big" style="font-size:16px;padding:10px 18px">🏠 بازی جدید</button></div>
   <div id="room" class="glass" hidden><div id="rmsg"></div><button id="share" class="big" style="font-size:16px;padding:10px 16px">📨 ارسال دعوت‌نامه</button><button id="copy">کپی لینک</button></div>
   <div id="scrim" hidden></div>
-  <div id="menu" class="glass" hidden><h3>🎯 منچ</h3><button id="mute">🔊 صدا</button><button id="rotbtn">🔄 برعکس کردن صفحه</button><button id="lobby">🎮 لیست بازی‌ها</button><button id="home">🏠 بازی جدید</button></div>
+  <div id="menu" class="glass" hidden><h3>🎯 منچ</h3><button id="mute">🔊 صدا</button><button id="lobby">🎮 لیست بازی‌ها</button><button id="home">🏠 بازی جدید</button></div>
   <div id="setup"><div class="box">
     <h2>🎯 منچ</h2>
     <div>تعداد بازیکن‌ها</div>
@@ -68,7 +68,6 @@ button{font-family:inherit;font-size:15px;padding:10px 14px;border:0;border-radi
     <div class="row" id="ps"></div>
     <small>بقیه رو کامپیوتر بازی می‌کنه</small>
     <button id="go">شروع بازی</button>
-    <button id="rot2" style="font-size:13px;opacity:.85">🔄 صفحه برعکسه؟ اینجا بزن</button>
     <button id="lobby2" style="font-size:13px;opacity:.85">🎮 لیست بازی‌ها</button>
   </div></div>
 </div>
@@ -80,7 +79,7 @@ const APP_LINK='https://t.me/Dongbegir_bot/mench';
 const LIMIT=15,AFK=5,SPEED=1;               // مهلت هر حرکت (ثانیه) و تعداد دفعات بازی‌نکردن
 const BROKERS=['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://test.mosquitto.org:8081'];
 const ALPHA='abcdefghjkmnpqrstuvwxyz23456789';
-const CS=42,BX=7,BY=7;
+let CSX=42,CSY=42,BX=7,BY=7,VW=476,VH=504,DX=238,DY=238,DS=56;
 const FA=['','۱','۲','۳','۴'],MEDAL=['🥇','🥈','🥉','4️⃣'];
 const COL=['#ef4444','#22c55e','#f5b301','#3b82f6'],DK=['#7f1d1d','#14532d','#8a4b04','#1e3a8a'],COLN=['قرمز','سبز','زرد','آبی'];
 const RING=[[0,4],[1,4],[2,4],[3,4],[4,4],[4,3],[4,2],[4,1],[4,0],[5,0],[6,0],[6,1],[6,2],[6,3],[6,4],[7,4],[8,4],[9,4],[10,4],[10,5],[10,6],[9,6],[8,6],[7,6],[6,6],[6,7],[6,8],[6,9],[6,10],[5,10],[4,10],[4,9],[4,8],[4,7],[4,6],[3,6],[2,6],[1,6],[0,6],[0,5]];
@@ -97,16 +96,21 @@ const mine=()=>G&&G.hs.includes(mySeat)&&G.tn===mySeat;
 const esc=t=>String(t).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const cellOf=(s,p)=>p<=39?RING[(START[s]+p)%40]:LANE[s][p-40];
 
-/* ---------- fit / rotation ---------- */
-let rot=1;try{rot=localStorage.getItem('rotDir')==='-1'?-1:1;}catch(e){}
-function fit(){
-  const w=innerWidth,h=innerHeight,a=$('app').style;
-  a.cssText=h>w?(rot===1?`position:fixed;top:0;left:${w}px;width:${h}px;height:${w}px;transform-origin:0 0;transform:rotate(90deg)`
-                        :`position:fixed;top:${h}px;left:0;width:${h}px;height:${w}px;transform-origin:0 0;transform:rotate(-90deg)`)
-               :'position:fixed;top:0;left:0;width:100%;height:100%';
+/* ---------- layout: the board stretches (a little) to fill any screen ---------- */
+function layout(){
+  const ar=Math.max(.3,innerWidth/Math.max(1,innerHeight)),S=42,strip=34,pad=14;
+  if(ar>=1){VH=11*S+2*pad+strip;VW=VH*ar;}else{VW=11*S+2*pad;VH=VW/ar;}
+  const c=Math.min((VW-2*pad)/11,(VH-strip-2*pad)/11);
+  CSX=CSY=c;                                   // خونه‌ها همیشه مربع می‌مونن تا کیفیت افت نکنه
+  BX=(VW-11*c)/2;BY=strip+(VH-strip-11*c)/2;
+  // تاس بیرون از تخته، توی جای خالی قاب: اول پایین تخته، اگه جا نبود کنار تخته، و در آخر وسط تخته
+  const below=VH-(BY+11*c+8),right=VW-(BX+11*c+8);
+  if(below>=78){DX=VW/2;DY=BY+11*c+8+below/2;DS=Math.min(80,below-16);}
+  else if(right>=78){DX=BX+11*c+8+right/2;DY=VH/2+10;DS=Math.min(80,right-16);}
+  else{DX=BX+5.5*c;DY=BY+5.5*c;DS=56;}
+  $('bd').setAttribute('viewBox','0 0 '+VW+' '+VH);
 }
-function flipScreen(){rot=-rot;try{localStorage.setItem('rotDir',rot);}catch(e){}fit();}
-addEventListener('resize',fit);fit();
+addEventListener('resize',()=>{if(PW){build();update();}});
 
 /* ---------- sound ---------- */
 let AC=null,muted=false;try{muted=localStorage.getItem('nardMute')==='1';}catch(e){}
@@ -160,10 +164,10 @@ function doMove(s,i,m){
   }
   G.ph='moving';step();
 }
-function afterMove(){const s=G.tn;if(G.die===6&&!G.bonus&&!G.rank.includes(s)){G.bonus=true;G.ph='roll';G.die=0;G.msg={k:'again',p:s};step();}else startTurn(nxt(s));}
+function afterMove(){const s=G.tn;if(G.die===6&&!G.rank.includes(s)){G.bonus=true;G.ph='roll';G.die=0;G.msg={k:'again',p:s};step();}else startTurn(nxt(s));}
 function passFn(){
   const s=G.tn;
-  if(G.die===6&&!G.bonus){G.bonus=true;G.ph='roll';G.msg={k:'again',p:s};step();}
+  if(G.die===6){G.bonus=true;G.ph='roll';G.msg={k:'again',p:s};step();}
   else startTurn(nxt(s));
 }
 function danger(s,t){
@@ -264,8 +268,8 @@ function act(t,x){
 
 /* ---------- drawing ---------- */
 function rotc(x,y){for(let i=0;i<view;i++)[x,y]=[11-y,x];return [x,y];}
-const px=(c,r)=>{const [x,y]=rotc(c+.5,r+.5);return [BX+x*CS,BY+y*CS];};
-function area(c0,r0,w,h){const a=rotc(c0,r0),b=rotc(c0+w,r0+h);return [BX+Math.min(a[0],b[0])*CS,BY+Math.min(a[1],b[1])*CS,w*CS,h*CS];}
+const px=(c,r)=>{const [x,y]=rotc(c+.5,r+.5);return [BX+x*CSX,BY+y*CSY];};
+function area(c0,r0,w,h){const a=rotc(c0,r0),b=rotc(c0+w,r0+h);return [BX+Math.min(a[0],b[0])*CSX,BY+Math.min(a[1],b[1])*CSY,w*CSX,h*CSY];}
 const on=s=>!G||!G.act||G.act.includes(s);
 function pawnSvg(s,i){
   return `<g class="pw" id="pw${s}${i}" data-s="${s}" data-i="${i}"${on(s)?'':' style="display:none"'}><g transform="scale(1.06)"><ellipse cx="0" cy="13" rx="13" ry="5" fill="rgba(0,0,0,.5)"/><circle class="ring" r="21" cy="-2"/>`+
@@ -273,16 +277,20 @@ function pawnSvg(s,i){
    `<circle cy="-9" r="8.5" fill="url(#pg${s})" stroke="${DK[s]}" stroke-width="1.2"/><ellipse cx="-3" cy="-12" rx="3" ry="2" fill="#fff" fill-opacity=".75"/><ellipse cx="-6" cy="4" rx="1.8" ry="4" fill="#fff" fill-opacity=".25"/></g></g>`;
 }
 function build(){
+  layout();
   view=(3-mySeat+4)%4;
-  const W=11*CS;
+  const W=11*CSX,H=11*CSY;
   let b='<defs>'+COL.map((c,s)=>`<radialGradient id="pg${s}" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".3" stop-color="${c}"/><stop offset="1" stop-color="${DK[s]}"/></radialGradient>`).join('')+
-   '<radialGradient id="bg" gradientUnits="userSpaceOnUse" cx="238" cy="120" r="560"><stop offset="0" stop-color="#1d2c5c"/><stop offset="1" stop-color="#080c18"/></radialGradient>'+
+   '<radialGradient id="bg" gradientUnits="userSpaceOnUse" cx="${VW/2}" cy="${VH*.25}" r="${VH*1.1}"><stop offset="0" stop-color="#1d2c5c"/><stop offset="1" stop-color="#080c18"/></radialGradient>'+
    '<linearGradient id="wood" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6a4322"/><stop offset=".5" stop-color="#47290f"/><stop offset="1" stop-color="#2d1a09"/></linearGradient>'+
    '<radialGradient id="cell" cx=".4" cy=".35" r=".9"><stop offset="0" stop-color="#fffaf0"/><stop offset="1" stop-color="#d9cba6"/></radialGradient>'+
    '<filter id="sh"><feDropShadow dx="0" dy="4" stdDeviation="7" flood-color="#000" flood-opacity=".6"/></filter></defs>'+
    '<rect x="-4000" y="-4000" width="9000" height="9000" fill="url(#bg)"/>'+
-   `<rect x="${BX-7}" y="${BY-7}" width="${W+14}" height="${W+14}" rx="24" fill="url(#wood)" stroke="#d4a94a" stroke-width="3" filter="url(#sh)"/>`+
-   `<rect x="${BX-3}" y="${BY-3}" width="${W+6}" height="${W+6}" rx="20" fill="none" stroke="rgba(255,225,150,.35)" stroke-width="1.5"/>`;
+   '<pattern id="grain" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(7)"><rect width="9" height="1.3" fill="rgba(255,220,170,.06)"/></pattern>'+
+   `<rect x="2" y="2" width="${VW-4}" height="${VH-4}" rx="26" fill="url(#wood)" stroke="#d4a94a" stroke-width="3"/>`+
+   `<rect x="2" y="2" width="${VW-4}" height="${VH-4}" rx="26" fill="url(#grain)"/>`+
+   `<rect x="8" y="8" width="${VW-16}" height="${VH-16}" rx="21" fill="none" stroke="rgba(255,225,150,.35)" stroke-width="1.5"/>`+
+   `<rect x="${BX-8}" y="${BY-8}" width="${W+16}" height="${H+16}" rx="16" fill="rgba(0,0,0,.3)" stroke="#d4a94a" stroke-opacity=".75" stroke-width="2.5" filter="url(#sh)"/>`;
   for(let s=0;s<4;s++){
     const [x,y,w,h]=area(BZ[s][0],BZ[s][1],4,4);
     b+=`<rect ${on(s)?`id="cd${s}" `:''}x="${x+3}" y="${y+3}" width="${w-6}" height="${h-6}" rx="22" fill="${on(s)?COL[s]:'#888'}" fill-opacity="${on(s)?.2:.05}" stroke="${on(s)?COL[s]:'#666'}" stroke-opacity="${on(s)?1:.4}" stroke-width="2.5"/>`;
@@ -292,19 +300,19 @@ function build(){
       b+=`<text id="cn${s}" x="${x+w/2}" y="${y+25}" font-size="14" font-weight="bold" ${st}></text><text id="cf${s}" x="${x+w/2}" y="${y+h-12}" font-size="13" ${st}></text>`;
     }
   }
-  const q=CS*.45;
+  const qx=CSX*.45,qy=CSY*.45;
   RING.forEach(([c,r],i)=>{const [cx,cy]=px(c,r),s=START.indexOf(i),o=s>=0&&on(s);
-    b+=`<rect x="${cx-q}" y="${cy-q}" width="${q*2}" height="${q*2}" rx="10" fill="${o?COL[s]:'url(#cell)'}" stroke="${o?DK[s]:'#a89868'}" stroke-width="${o?2.5:1.5}"/>`;
+    b+=`<rect x="${cx-qx}" y="${cy-qy}" width="${qx*2}" height="${qy*2}" rx="10" fill="${o?COL[s]:'url(#cell)'}" stroke="${o?DK[s]:'#a89868'}" stroke-width="${o?2.5:1.5}"/>`;
     if(o)b+=`<circle cx="${cx}" cy="${cy}" r="10" fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="2.5"/>`;});
   LANE.forEach((L,s)=>L.forEach(([c,r],k)=>{const [cx,cy]=px(c,r);
-    b+=`<rect x="${cx-q}" y="${cy-q}" width="${q*2}" height="${q*2}" rx="10" fill="${on(s)?COL[s]:'#999'}" fill-opacity="${on(s)?.5+k*.12:.12}" stroke="${on(s)?COL[s]:'#777'}" stroke-opacity="${on(s)?1:.3}" stroke-width="2"/>`;
+    b+=`<rect x="${cx-qx}" y="${cy-qy}" width="${qx*2}" height="${qy*2}" rx="10" fill="${on(s)?COL[s]:'#999'}" fill-opacity="${on(s)?.5+k*.12:.12}" stroke="${on(s)?COL[s]:'#777'}" stroke-opacity="${on(s)?1:.3}" stroke-width="2"/>`;
     if(k===3&&on(s))b+=`<text x="${cx}" y="${cy+6}" text-anchor="middle" font-size="18" fill="#fff" pointer-events="none">★</text>`;}));
   const ctr=[[[5,5],[5,6]],[[5,5],[6,5]],[[6,5],[6,6]],[[5,6],[6,6]]];
   ctr.forEach(([a,c],s)=>{const A=rotc(a[0],a[1]),C=rotc(c[0],c[1]),M=rotc(5.5,5.5);
-    b+=`<polygon points="${BX+A[0]*CS},${BY+A[1]*CS} ${BX+C[0]*CS},${BY+C[1]*CS} ${BX+M[0]*CS},${BY+M[1]*CS}" fill="${on(s)?COL[s]:'#666'}" stroke="#fff" stroke-opacity=".6"/>`;});
+    b+=`<polygon points="${BX+A[0]*CSX},${BY+A[1]*CSY} ${BX+C[0]*CSX},${BY+C[1]*CSY} ${BX+M[0]*CSX},${BY+M[1]*CSY}" fill="${on(s)?COL[s]:'#666'}" stroke="#fff" stroke-opacity=".6"/>`;});
   // die sits on the board itself; pawns are drawn above it
   b+='<g id="dieg"></g><g id="hints"></g>'+[0,1,2,3].map(s=>[0,1,2,3].map(i=>pawnSvg(s,i)).join('')).join('');
-  b+=`<text id="st" x="${BX+W/2}" y="-9" text-anchor="middle" font-size="15" fill="#f3ead3"></text><g id="conf"></g>`;
+  b+=`<text id="st" x="${VW/2}" y="${Math.max(22,BY-16)}" text-anchor="middle" font-size="16" fill="#f3ead3"></text><g id="conf"></g>`;
   $('bd').innerHTML=b;
   PW=[0,1,2,3].map(s=>[0,1,2,3].map(i=>$('pw'+s+i)));
   disp=[0,1,2,3].map(()=>[-2,-2,-2,-2]);inited=false;builtAct=JSON.stringify(G&&G.act||[0,1,2,3]);
@@ -347,11 +355,11 @@ function sync(){
 }
 const dieSvg=(v,s,ring)=>{
   const P={1:[[0,0]],2:[[-1,-1],[1,1]],3:[[-1,-1],[0,0],[1,1]],4:[[-1,-1],[1,-1],[-1,1],[1,1]],5:[[-1,-1],[1,-1],[0,0],[-1,1],[1,1]],6:[[-1,-1],[1,-1],[-1,0],[1,0],[-1,1],[1,1]]}[v]||[];
-  const cx=BX+5.5*CS,cy=BY+5.5*CS;
-  let g=ring?`<circle class="glow" cx="${cx}" cy="${cy}" r="44" fill="none" stroke="#fff" stroke-width="4"/>`:'';
-  g+=`<rect x="${cx-28}" y="${cy-28}" width="56" height="56" rx="13" fill="${s>=0?'url(#pg'+s+')':'#556'}" stroke="#fff" stroke-opacity=".8" stroke-width="2.5" filter="url(#sh)"/>`;
-  P.forEach(([a,b])=>g+=`<circle cx="${cx+a*15}" cy="${cy+b*15}" r="5" fill="#fff"/>`);
-  if(!v)g+=`<text x="${cx}" y="${cy+11}" text-anchor="middle" font-size="30" fill="#fff" fill-opacity=".85">?</text>`;
+  const cx=DX,cy=DY,h=DS/2,u=DS*.27;
+  let g=ring?`<circle class="glow" cx="${cx}" cy="${cy}" r="${DS*.78}" fill="none" stroke="#fff" stroke-width="4"/>`:'';
+  g+=`<rect x="${cx-h}" y="${cy-h}" width="${DS}" height="${DS}" rx="${DS*.23}" fill="${s>=0?'url(#pg'+s+')':'#556'}" stroke="#fff" stroke-opacity=".8" stroke-width="2.5" filter="url(#sh)"/>`;
+  P.forEach(([a,b])=>g+=`<circle cx="${cx+a*u}" cy="${cy+b*u}" r="${DS*.09}" fill="#fff"/>`);
+  if(!v)g+=`<text x="${cx}" y="${cy+DS*.2}" text-anchor="middle" font-size="${DS*.55}" fill="#fff" fill-opacity=".85">?</text>`;
   return g;
 };
 function msgText(){
@@ -408,7 +416,7 @@ function update(){
   $('rank').hidden=!mend;
   if(mend&&lastPh!=='mend'){
     $('rlist').innerHTML=G.rank.map((s,k)=>`<div style="font-size:18px;margin:6px 0">${MEDAL[k]} <span style="color:${COL[s]}">●</span> ${esc(G.nm[s])}${s===mySeat?' (تو)':''}</div>`).join('');
-    snd('win');let c='';for(let k=0;k<36;k++)c+=`<rect class="conf" x="${20+Math.random()*430}" y="0" width="9" height="14" fill="${COL[k%4]}" style="animation-delay:${(Math.random()*3).toFixed(2)}s"/>`;
+    snd('win');let c='';for(let k=0;k<36;k++)c+=`<rect class="conf" x="${Math.random()*VW}" y="0" width="9" height="14" fill="${COL[k%4]}" style="animation-delay:${(Math.random()*3).toFixed(2)}s"/>`;
     $('conf').innerHTML=c;
   }
   if(!mend)$('conf').innerHTML='';
@@ -425,7 +433,6 @@ $('bd').addEventListener('click',e=>{
   if(pe&&+pe.dataset.s===mySeat&&G&&G.ph==='move')act('move',+pe.dataset.i);
 });
 $('burger').onclick=()=>toggleMenu();$('scrim').onclick=()=>toggleMenu(false);$('home').onclick=home;
-$('rotbtn').onclick=flipScreen;$('rot2').onclick=flipScreen;
 $('lobby').onclick=$('lobby2').onclick=()=>{closeNet();location.href='index.html?back=1';};
 $('rhome').onclick=home;
 function muteLabel(){$('mute').textContent=muted?'🔇 بی‌صدا':'🔊 صدا';}
