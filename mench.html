@@ -132,13 +132,13 @@ function moves(s,d){
   const P=G.p[s],r=[];
   for(let i=0;i<4;i++){
     const p=P[i];let t;
-    if(p===-1){if(d!==6)continue;t=0;}else if(p===43)continue;else{t=p+d;if(t>43)continue;}
-    if(t<43&&P.some((q,j)=>j!==i&&q===t))continue;       // روی مهره‌ی خودت نمی‌شه نشست
+    if(p===-1){if(d!==6)continue;t=0;}else{t=p+d;if(t>43)continue;}
+    if(P.some((q,j)=>j!==i&&q===t))continue;             // روی مهره‌ی خودت نمی‌شه نشست؛ هر مهره خونه‌ی خودش رو داره
     r.push({i,t});
   }
   return r;
 }
-function oppAt(s,t){const gc=(START[s]+t)%40,r=[];for(let o=0;o<4;o++)if(o!==s)G.p[o].forEach((q,j)=>{if(q>=0&&q<=39&&(START[o]+q)%40===gc)r.push([o,j]);});return r;}
+function oppAt(s,t){const gc=(START[s]+t)%40,r=[];for(let o=0;o<4;o++)if(o!==s)G.p[o].forEach((q,j)=>{if(q>0&&q<=39&&(START[o]+q)%40===gc)r.push([o,j]);});return r;}   // q>0: مهره‌ی روی خونه‌ی شروع خودش امنه
 function applyMove(s,i,t){let cap=0;G.p[s][i]=t;if(t<=39)oppAt(s,t).forEach(([o,j])=>{G.p[o][j]=-1;cap++;});return cap;}
 function startTurn(s){G.tn=s;G.ph='roll';G.die=0;G.mv=[];G.tries=1;G.bonus=false;G.msg=null;step();}
 function doRoll(s,m){if(G.ph!=='roll'||G.tn!==s)return;G.die=1+Math.random()*6|0;G.rl++;G.ph='rolled';G.mv=[];G.msg=m||null;step();}
@@ -148,7 +148,7 @@ function doMove(s,i,m){
   const mv=G.mv.find(x=>x.i===i);if(!mv)return;
   G.msg=m||null;const cap=applyMove(s,i,mv.t);
   if(cap)G.msg={k:'cap',p:s,n:cap};
-  if(G.p[s].every(p=>p===43)){G.ph='mend';G.win=s;G.msg={k:'win',p:s};step();return;}
+  if(G.p[s].every(p=>p>=40)){G.ph='mend';G.win=s;G.msg={k:'win',p:s};step();return;}
   G.ph='moving';step();
 }
 function afterMove(){const s=G.tn;if(G.die===6&&!G.bonus){G.bonus=true;G.ph='roll';G.die=0;G.msg={k:'again',p:s};step();}else startTurn(nxt(s));}
@@ -158,7 +158,7 @@ function passFn(){
   else startTurn(nxt(s));
 }
 function danger(s,t){
-  if(t>39)return false;const gc=(START[s]+t)%40;
+  if(t>39||t===0)return false;const gc=(START[s]+t)%40;
   for(let o=0;o<4;o++){if(o===s||!G.act.includes(o))continue;
     if(G.p[o].includes(-1)&&(START[o]===gc))return true;
     for(const q of G.p[o])if(q>=0&&q<=39){const g=(START[o]+q)%40,d=(gc-g+40)%40;if(d>=1&&d<=6)return true;}}
@@ -168,7 +168,7 @@ function botPick(){
   const s=G.tn;let best=G.mv[0].i,bs=-1e9;
   for(const m of G.mv){const p=G.p[s][m.i];let sc=Math.random()*3+m.t*0.4;
     if(p===-1)sc+=30;
-    if(m.t>=40)sc+=m.t===43?60:25;
+    if(m.t>=40)sc+=p>=40?4:45;
     if(m.t<=39&&oppAt(s,m.t).length)sc+=80;
     if(danger(s,m.t))sc-=25;
     if(p>=0&&danger(s,p))sc+=22;
@@ -305,14 +305,26 @@ function build(){
 }
 function pawnXY(s,i,p){
   let [x,y]=px(...(p===-1?BASE[s][i]:cellOf(s,p)));
-  if(p===43){x+=(i-1.5)*6;y+=(i-1.5)*4;}
+  if(G&&p>=0&&p<=39){
+    const gc=(START[s]+p)%40,me=s*4+i;let n=1,r=0;
+    for(let o=0;o<4;o++)for(let j=0;j<4;j++){if(o*4+j===me)continue;const q=G.p[o][j];if(q>=0&&q<=39&&(START[o]+q)%40===gc){n++;if(o*4+j<me)r++;}}
+    if(n>1)x+=(r-(n-1)/2)*13;
+  }
   return [x,y];
+}
+function reflow(){
+  if(!G||!PW)return;
+  for(let s=0;s<4;s++)for(let i=0;i<4;i++){
+    const p=disp[s][i];if(p<0||p!==G.p[s][i])continue;
+    const [x,y]=pawnXY(s,i,p),k=x+','+y,el=PW[s][i];
+    if(el._k!==k){el._k=k;el.style.transform=`translate(${x}px,${y}px)`;}
+  }
 }
 function put(s,i,p,mode_){
   const el=PW[s][i],[x,y]=pawnXY(s,i,p);
   if(mode_==='now'){el.style.transition='none';el.style.transform=`translate(${x}px,${y}px)`;el.getBoundingClientRect();el.style.transition='';}
   else{el.classList.toggle('slow',mode_==='slow');el.style.transform=`translate(${x}px,${y}px)`;}
-  disp[s][i]=p;
+  el._k=x+','+y;disp[s][i]=p;
 }
 function sync(){
   const P=G?G.p:[[-1,-1,-1,-1],[-1,-1,-1,-1],[-1,-1,-1,-1],[-1,-1,-1,-1]];
@@ -323,7 +335,7 @@ function sync(){
     if(!inited||d===-2||t<d&&t!==-1){put(s,i,t,'now');continue;}
     if(t===-1){put(s,i,-1,'slow');snd('cap');continue;}
     const path=[];for(let q=d===-1?0:d+1;q<=t;q++)path.push(q);
-    path.forEach((q,k)=>tm[s][i].push(setTimeout(()=>{put(s,i,q,'');snd(q===43?'fin':'hop');},k*150)));
+    path.forEach((q,k)=>tm[s][i].push(setTimeout(()=>{put(s,i,q,'');snd(q>=40?'fin':'hop');},k*150)));
   }
   if(G)inited=true;
 }
@@ -354,11 +366,11 @@ function msgText(){
 }
 function update(){
   if(!PW)build();
-  sync();
+  sync();reflow();
   const P=G?G.p:null;
   for(let s=0;s<4;s++){
     const nm=$('cn'+s);if(!nm)continue;
-    const fin=G?G.p[s].filter(p=>p===43).length:0,act=G&&G.ph!=='wait'&&G.ph!=='mend'&&G.tn===s;
+    const fin=G?G.p[s].filter(p=>p>=40).length:0,act=G&&G.ph!=='wait'&&G.ph!=='mend'&&G.tn===s;
     nm.textContent=(G?G.nm[s]:'')+(s===mySeat?' (تو)':'');
     $('cf'+s).textContent=G?'🏁 '+fin+' از ۴ رسیده':'';
     $('cs'+s).textContent=G?(G.hs.includes(s)?'':'🤖 کامپیوتر'):'';
