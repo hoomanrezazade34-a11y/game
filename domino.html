@@ -80,7 +80,7 @@ button:active{transform:scale(.95);filter:brightness(1.15)}
     <div class="lbl">سقف امتیاز (رسیدن بهش یعنی باخت)</div>
     <div class="row" id="tg"><button data-n="50">۵۰</button><button data-n="100" class="on">۱۰۰</button><button data-n="150">۱۵۰</button><button data-n="200">۲۰۰</button></div>
     <div class="lbl">با چند دست سنگ بازی کنیم؟</div>
-    <div class="row" id="ts"><button data-n="1" class="on">۱ دست</button><button data-n="2">۲ دست (۵۶ مهره)</button></div>
+    <div class="row" id="setsRow"><button data-n="1" class="on">۱ دست</button><button data-n="2">۲ دست (۵۶ مهره)</button></div>
     <div class="lbl">⏱ مهلت هر حرکت (ثانیه)</div>
     <div class="row" id="tl"><button data-n="10">۱۰</button><button data-n="15">۱۵</button><button data-n="20" class="on">۲۰</button><button data-n="30">۳۰</button><button data-n="45">۴۵</button><button data-n="60">۶۰</button></div>
     <button id="go" class="big">شروع بازی</button>
@@ -504,7 +504,7 @@ function renderPs(){
 $('ps').onclick=e=>{const n=e.target.dataset.n;if(!n)return;selN=+n;renderPs();};
 $('tt').onclick=e=>{const n=e.target.dataset.n;if(!n)return;selT=+n;[...$('tt').children].forEach(b=>b.classList.toggle('on',+b.dataset.n===selT));renderPs();};
 $('tg').onclick=e=>{const n=e.target.dataset.n;if(!n)return;selG=+n;[...$('tg').children].forEach(b=>b.classList.toggle('on',+b.dataset.n===selG));};
-$('ts').onclick=e=>{const n=e.target.dataset.n;if(!n)return;selS=+n;[...$('ts').children].forEach(b=>b.classList.toggle('on',+b.dataset.n===selS));};
+$('setsRow').onclick=e=>{const n=e.target.dataset.n;if(!n)return;selS=+n;[...$('setsRow').children].forEach(b=>b.classList.toggle('on',+b.dataset.n===selS));};
 $('tl').onclick=e=>{const n=e.target.dataset.n;if(!n)return;selL=Math.min(MAXLIM,+n);[...$('tl').children].forEach(b=>b.classList.toggle('on',+b.dataset.n===selL));};
 renderPs();
 $('go').onclick=()=>{
