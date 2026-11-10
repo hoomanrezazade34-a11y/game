@@ -6,53 +6,40 @@
 <title>بازی‌ها</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-:root{--saffron:#e0a526;--ivory:#efe6d0}
+:root{--ivory:#efe6d0}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;overflow:hidden;background:#17110c;color:var(--ivory);font-family:Tahoma,Arial,sans-serif;user-select:none}
-#app{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:10px;background:radial-gradient(ellipse at 50% 30%,#3a2a1c 0%,#17110c 70%)}
-h1{margin:0;font-size:22px;letter-spacing:.5px}
-#cards{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(3,1fr);gap:10px;width:100%;max-width:520px;flex:1 1 auto;min-height:0}
-.card{min-width:0;min-height:0;border-radius:18px;border:1px solid rgba(255,255,255,.22);color:var(--ivory);font-family:inherit;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:10px;padding:6px 10px;text-align:right;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.45);transition:transform .12s}
+#app{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;gap:12px;padding:max(16px,env(safe-area-inset-top)) 14px max(16px,env(safe-area-inset-bottom));background:radial-gradient(ellipse at 50% 15%,#4a351f 0%,#17110c 70%)}
+h1{margin:4px 0 0;font-size:26px;background:linear-gradient(180deg,#fff3c4,#f0c35a 60%,#b9801c);-webkit-background-clip:text;background-clip:text;color:transparent}
+#cards{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(3,1fr);gap:12px;width:100%;max-width:460px;flex:1 1 auto;min-height:0}
+.card{min-width:0;min-height:0;border-radius:22px;border:1px solid rgba(255,255,255,.22);color:var(--ivory);font-family:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:10px;text-align:center;cursor:pointer;box-shadow:0 10px 24px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.2);transition:transform .12s}
 .card:active{transform:scale(.96)}
-.card .ic{font-size:38px;line-height:1}
-.card .tx{display:flex;flex-direction:column;gap:2px}
-.card .t{font-size:17px;font-weight:bold}
-.card .d{font-size:11px;opacity:.85;line-height:1.5}
+.card .ic{font-size:clamp(38px,8vh,58px);line-height:1;filter:drop-shadow(0 4px 6px rgba(0,0,0,.5))}
+.card .t{font-size:19px;font-weight:bold}
+.card .d{font-size:12px;opacity:.85;line-height:1.6}
 #c1{background:linear-gradient(160deg,#6b3d1f,#2f1b0d)}
 #c2{background:linear-gradient(160deg,#1f6b45,#0e2e1d)}
 #c3{background:linear-gradient(160deg,#3b4fb8,#141c4d)}
 #c4{background:linear-gradient(160deg,#b8433b,#4d1414)}
 #c5{background:linear-gradient(160deg,#7a3fc0,#2b1450)}
-.card:last-child:nth-child(odd){grid-column:1/-1;justify-self:center;width:calc(50% - 5px)}
-#rot{background:none;border:0;color:var(--ivory);opacity:.6;font-size:13px;font-family:inherit;padding:2px}
+#c6{background:linear-gradient(160deg,#1b7f86,#0b3438)}
 </style>
 </head>
 <body>
 <div id="app">
   <h1>🎮 بازی‌ها</h1>
   <div id="cards">
-    <button class="card" id="c1" data-go="backgammon.html?from=lobby"><span class="ic">🎲</span><div class="tx"><span class="t">تخته نرد</span><span class="d">با کامپیوتر، دو نفره<br>یا آنلاین با دوست</span></div></button>
-    <button class="card" id="c2" data-go="hokm.html?from=lobby"><span class="ic">🃏</span><div class="tx"><span class="t">حکم</span><span class="d">۱ تا ۴ نفره<br>جای خالی با کامپیوتر</span></div></button>
-    <button class="card" id="c3" data-go="mench.html?from=lobby"><span class="ic">🎯</span><div class="tx"><span class="t">منچ</span><span class="d">۲ تا ۴ نفره<br>با کامپیوتر یا دوستات</span></div></button>
-    <button class="card" id="c4" data-go="snake.html?from=lobby"><span class="ic">🐍</span><div class="tx"><span class="t">مارپله</span><span class="d">۲ تا ۱۰ نفره<br>با کامپیوتر یا دوستات</span></div></button>
-    <button class="card" id="c5" data-go="block.html?from=lobby"><span class="ic">💎</span><div class="tx"><span class="t">بلوک جواهر</span><span class="d">تک‌نفره<br>رکورد بزن!</span></div></button>
+    <button class="card" id="c1" data-go="backgammon.html?from=lobby"><span class="ic">🎲</span><span class="t">تخته نرد</span><span class="d">با کامپیوتر، دو نفره<br>یا آنلاین با دوست</span></button>
+    <button class="card" id="c6" data-go="domino.html?from=lobby"><span class="ic">🁣</span><span class="t">دومینو</span><span class="d">۲ تا ۴ نفره<br>با کامپیوتر یا دوستات</span></button>
+    <button class="card" id="c2" data-go="hokm.html?from=lobby"><span class="ic">🃏</span><span class="t">حکم</span><span class="d">۱ تا ۴ نفره<br>جای خالی با کامپیوتر</span></button>
+    <button class="card" id="c3" data-go="mench.html?from=lobby"><span class="ic">🎯</span><span class="t">منچ</span><span class="d">۲ تا ۴ نفره<br>با کامپیوتر یا دوستات</span></button>
+    <button class="card" id="c4" data-go="snake.html?from=lobby"><span class="ic">🐍</span><span class="t">مارپله</span><span class="d">۲ تا ۱۰ نفره<br>با کامپیوتر یا دوستات</span></button>
+    <button class="card" id="c5" data-go="block.html?from=lobby"><span class="ic">💎</span><span class="t">بلوک جواهر</span><span class="d">تک‌نفره<br>رکورد بزن!</span></button>
   </div>
-  <button id="rot">🔄 صفحه برعکسه؟ اینجا بزن</button>
 </div>
 <script>
 const tg=window.Telegram&&window.Telegram.WebApp;
 if(tg){try{tg.ready();tg.expand();if(tg.disableVerticalSwipes)tg.disableVerticalSwipes();}catch(e){}}
-const $=id=>document.getElementById(id);
-let rot=1;try{rot=localStorage.getItem('rotDir')==='-1'?-1:1;}catch(e){}
-function fit(){
-  const w=innerWidth,h=innerHeight,a=$('app').style;
-  a.cssText=h>w?(rot===1?`position:fixed;top:0;left:${w}px;width:${h}px;height:${w}px;transform-origin:0 0;transform:rotate(90deg)`
-                        :`position:fixed;top:${h}px;left:0;width:${h}px;height:${w}px;transform-origin:0 0;transform:rotate(-90deg)`)
-               :'position:fixed;top:0;left:0;width:100%;height:100%';
-}
-function flipScreen(){rot=-rot;try{localStorage.setItem('rotDir',rot);}catch(e){}fit();}
-addEventListener('resize',fit);fit();
-$('rot').onclick=flipScreen;
 // لینک دعوت دوست (کد اتاق) مستقیم میره توی تخته نرد؛ ولی وقتی از داخل بازی برگشتی (back=1) همین‌جا می‌مونه
 const sp=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.start_param;
 if(sp&&/^[0-2][a-z0-9]{5}$/.test(sp)&&new URLSearchParams(location.search).get('back')!=='1')location.replace('backgammon.html?room='+sp);
