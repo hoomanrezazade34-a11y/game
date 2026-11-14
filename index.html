@@ -11,7 +11,7 @@
 html,body{margin:0;height:100%;overflow:hidden;background:#17110c;color:var(--ivory);font-family:Tahoma,Arial,sans-serif;user-select:none}
 #app{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;gap:12px;padding:max(16px,env(safe-area-inset-top)) 14px max(16px,env(safe-area-inset-bottom));background:radial-gradient(ellipse at 50% 15%,#4a351f 0%,#17110c 70%)}
 h1{margin:4px 0 0;font-size:26px;background:linear-gradient(180deg,#fff3c4,#f0c35a 60%,#b9801c);-webkit-background-clip:text;background-clip:text;color:transparent}
-#cards{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(3,1fr);gap:12px;width:100%;max-width:460px;flex:1 1 auto;min-height:0}
+#cards{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(4,1fr);gap:12px;width:100%;max-width:460px;flex:1 1 auto;min-height:0}
 .card{min-width:0;min-height:0;border-radius:22px;border:1px solid rgba(255,255,255,.22);color:var(--ivory);font-family:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:10px;text-align:center;cursor:pointer;box-shadow:0 10px 24px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.2);transition:transform .12s}
 .card:active{transform:scale(.96)}
 .card .ic{font-size:clamp(38px,8vh,58px);line-height:1;filter:drop-shadow(0 4px 6px rgba(0,0,0,.5))}
@@ -23,6 +23,8 @@ h1{margin:4px 0 0;font-size:26px;background:linear-gradient(180deg,#fff3c4,#f0c3
 #c4{background:linear-gradient(160deg,#b8433b,#4d1414)}
 #c5{background:linear-gradient(160deg,#7a3fc0,#2b1450)}
 #c6{background:linear-gradient(160deg,#1b7f86,#0b3438)}
+#c7{background:linear-gradient(160deg,#d99b2b,#5a3a08)}
+.card:last-child:nth-child(odd){grid-column:1/-1;justify-self:center;width:calc(50% - 6px)}
 </style>
 </head>
 <body>
@@ -35,6 +37,7 @@ h1{margin:4px 0 0;font-size:26px;background:linear-gradient(180deg,#fff3c4,#f0c3
     <button class="card" id="c3" data-go="mench.html?from=lobby"><span class="ic">🎯</span><span class="t">منچ</span><span class="d">۲ تا ۴ نفره<br>با کامپیوتر یا دوستات</span></button>
     <button class="card" id="c4" data-go="snake.html?from=lobby"><span class="ic">🐍</span><span class="t">مارپله</span><span class="d">۲ تا ۱۰ نفره<br>با کامپیوتر یا دوستات</span></button>
     <button class="card" id="c5" data-go="block.html?from=lobby"><span class="ic">💎</span><span class="t">بلوک جواهر</span><span class="d">تک‌نفره<br>رکورد بزن!</span></button>
+    <button class="card" id="c7" data-go="2048.html?from=lobby"><span class="ic">🔢</span><span class="t">۲۰۴۸</span><span class="d">تک‌نفره<br>رکورد بزن!</span></button>
   </div>
 </div>
 <script>
