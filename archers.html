@@ -249,7 +249,7 @@ function updArrow(a,dt){
     let hitB=false;for(const b of blocks)if(a.x>b.x&&a.x<b.x+b.w&&a.y>b.y&&a.y<b.y+b.h)hitB=true;
     if(hitB||a.y>=GY){a.y=Math.min(a.y,GY);const T=AR[a.ti];
       if(T.fx==='boom'){explode(a.x,a.y,T.rad,a.dmg*1.1,a.team,T.col,a.owner);a.dead=1;}
-      else if(T.fx==='meteor'){snd('meteor');const bx=a.x;for(let k=0;k<4;k++)timers.push({t:.1+k*.14,f:()=>explode(bx+rnd(-70,70),GY-8,50,a.dmg*.55,a.team,'#ff9a3a',a.owner);});a.stuck={};a.t=0;}
+      else if(T.fx==='meteor'){snd('meteor');const bx=a.x;for(let k=0;k<4;k++)timers.push({t:.1+k*.14,f:()=>explode(bx+rnd(-70,70),GY-8,50,a.dmg*.55,a.team,'#ff9a3a',a.owner)});a.stuck={};a.t=0;}
       else{a.stuck={};a.t=0;spark(a.x,a.y,'#c9b98a',5,90);}
       return;}
     if(a.x<-80||a.x>W+80||a.y<-400){a.dead=1;return;}
