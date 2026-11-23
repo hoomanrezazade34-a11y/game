@@ -28,7 +28,7 @@ button:active{transform:scale(.95)}
 .srow .ic{font-size:26px;width:34px;text-align:center}.srow .tx{flex:1;font-size:13px;line-height:1.5}
 .srow button{padding:7px 10px;font-size:13px;min-width:88px}.srow button:disabled{opacity:.4}
 .bar{height:6px;border-radius:4px;background:rgba(255,255,255,.15);overflow:hidden;margin-top:3px}.bar i{display:block;height:100%;background:linear-gradient(90deg,#ffd66e,#ff9a2a)}
-.row button.on{background:linear-gradient(180deg,#ffe08a,#e8a32a);color:#2b1c04;font-weight:bold}.pl{display:flex;gap:14px;justify-content:center}.pl>div{display:flex;flex-direction:column;gap:6px;align-items:center}.pc{min-width:120px;padding:7px 10px;border-radius:12px;background:rgba(255,255,255,.1);font-size:13px;border:2px solid transparent}.pc.L{border-color:#4b8bff}.pc.R{border-color:#ff6a7a}
+.row button.on{background:linear-gradient(180deg,#ffe08a,#e8a32a);color:#2b1c04;font-weight:bold}.row button:disabled{opacity:.4}.pl{display:flex;gap:14px;justify-content:center}.pl>div{display:flex;flex-direction:column;gap:6px;align-items:center}.pc{min-width:120px;padding:7px 10px;border-radius:12px;background:rgba(255,255,255,.1);font-size:13px;border:2px solid transparent}.pc.L{border-color:#4b8bff}.pc.R{border-color:#ff6a7a}
 h3{margin:6px 0 0;font-size:15px;color:#ffd66e;text-align:center}
 </style>
 </head>
@@ -39,7 +39,7 @@ h3{margin:6px 0 0;font-size:15px;color:#ffd66e;text-align:center}
 <div id="pad" hidden style="display:none"><button id="bl" class="glass">◀</button><button id="br" class="glass">▶</button></div>
 <div id="setup" class="ov"><div class="box glass">
   <h2>🏹 تیراندازها</h2><div class="info" id="stat"></div>
-  <div class="row" id="modes"><button data-m="adv" class="on">🏹 ماجراجویی</button><button data-m="duel">⚔ دوئل با کامپیوتر</button><button data-m="two">👥 دو نفره (یک گوشی)</button><button data-m="team">🌐 آنلاین با دوستان (۲ به ۲)</button></div>
+  <div class="row" id="modes"><button data-m="adv" class="on">🏹 ماجراجویی</button><button data-m="duel">⚔ دوئل با کامپیوتر</button><button data-m="two">👥 دو نفره (یک گوشی)</button><button data-m="team">🌐 آنلاین با دوستان</button></div>
   <div id="lvlw" hidden><div class="row" id="lvls"><button data-l="0">آسان</button><button data-l="1" class="on">متوسط</button><button data-l="2">سخت</button></div></div>
   <div class="sm" id="how"></div>
   <button id="go" class="gb">شروع</button>
@@ -48,29 +48,33 @@ h3{margin:6px 0 0;font-size:15px;color:#ffd66e;text-align:center}
 <div id="shop" class="ov" hidden><div class="box glass"><h2>🛒 فروشگاه</h2><div class="info" id="sc"></div><div id="slist"></div><button id="shopClose" class="gb">ادامه ▶</button></div></div>
 <div id="wave" class="ov" hidden style="background:rgba(5,10,28,.6)"><div class="box glass" style="width:min(380px,92%)"><h2 id="wt"></h2><div id="wx" class="info"></div><button id="nextW" class="gb">مرحله‌ی بعد ▶</button><button id="wshop">🛒 فروشگاه</button></div></div>
 <div id="over" class="ov" hidden><div class="box glass" style="width:min(380px,92%)"><h2 id="ot">💀 باختی</h2><div id="ox" class="info"></div><button id="again" class="gb">↻ دوباره</button><button id="home1">🏠 منوی اصلی</button></div></div>
-<div id="room" class="ov" hidden><div class="box glass" style="width:min(480px,96%)"><h2>🌐 اتاق آنلاین</h2><div id="rmsg" class="info"></div><div id="rpl" class="pl"></div><div class="row"><button id="share" class="gb" style="font-size:15px;padding:9px 18px">📨 ارسال دعوت‌نامه</button><button id="copy">کپی لینک</button></div><div class="row"><button id="rstart" class="gb" style="font-size:16px;padding:9px 24px">▶ شروع بازی</button><button id="rleave">خروج</button></div></div></div>
+<div id="room" class="ov" hidden><div class="box glass" style="width:min(480px,96%)"><h2>🌐 اتاق آنلاین</h2><div id="rmsg" class="info"></div><div class="row" id="fmts"><button data-f="11">۱ به ۱</button><button data-f="22" class="on">۲ به ۲</button><button data-f="13">۱ به ۳</button></div><div id="rpl" class="pl"></div><div class="row"><button id="share" class="gb" style="font-size:15px;padding:9px 18px">📨 ارسال دعوت‌نامه</button><button id="copy">کپی لینک</button></div><div class="row"><button id="rstart" class="gb" style="font-size:16px;padding:9px 24px">▶ شروع بازی</button><button id="rleave">خروج</button></div></div></div>
 <div id="menu" class="ov" hidden><div class="box glass" style="width:min(340px,92%)"><h2>⏸ مکث</h2><button id="resume" class="gb">▶ ادامه</button><button id="mute">🔊 صدا</button><button id="rot3">🔄 برعکس کردن صفحه</button><button id="home2">🏠 منوی اصلی</button></div></div>
 </div>
 <script>
+/* ⚠️ لینک دعوت: اینجا اسم کوتاه (short name) مینی‌اپ «تیراندازها» در BotFather رو بذار.
+   اگه این بازی مینی‌اپ اصلی ربات هست، فقط 'https://t.me/Dongbegir_bot' بنویس. */
+const APP_LINK='https://t.me/Dongbegir_bot/archers';
+
 const tg=window.Telegram&&Telegram.WebApp;if(tg){try{tg.ready();tg.expand();tg.disableVerticalSwipes&&tg.disableVerticalSwipes()}catch(e){}}
 const $=i=>document.getElementById(i),cv=$('c'),ctx=cv.getContext('2d');
 const W=800,H=450,GY=380,G=900,FA=[...'۰۱۲۳۴۵۶۷۸۹'],fa=n=>String(Math.round(n)).replace(/\d/g,d=>FA[d]);
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),rnd=(a,b)=>a+Math.random()*(b-a),pick=a=>a[Math.random()*a.length|0];
 const hs=i=>Math.abs(Math.sin(i*127.1+311.7)*43758.5453)%1;
 let AW=800,AH=450,S=1,OX=0,OY=0,rot=1;
-try{rot=localStorage.getItem('rotDir')==='-1'?-1:1}catch(e){}
+try{rot=localStorage.getItem('archRot')==='-1'?-1:1}catch(e){}
 function fit(){const w=innerWidth,h=innerHeight,a=$('app').style,d=Math.min(2,devicePixelRatio||1);
   if(h>w){AW=h;AH=w;a.cssText=rot===1?`left:${w}px;top:0;width:${h}px;height:${w}px;transform-origin:0 0;transform:rotate(90deg)`:`left:0;top:${h}px;width:${h}px;height:${w}px;transform-origin:0 0;transform:rotate(-90deg)`}
   else{AW=w;AH=h;a.cssText='left:0;top:0;width:100%;height:100%'}
   cv.width=AW*d;cv.height=AH*d;S=Math.min(AW/W,AH/H);OX=(AW-W*S)/2;OY=(AH-H*S)/2}
-function flipScreen(){rot=-rot;try{localStorage.setItem('rotDir',rot)}catch(e){}fit()}
+function flipScreen(){rot=-rot;try{localStorage.setItem('archRot',rot)}catch(e){}fit()}
 addEventListener('resize',fit);
 function toView(e){const w=innerWidth,h=innerHeight;let lx=e.clientX,ly=e.clientY;
   if(h>w){if(rot===1){lx=e.clientY;ly=w-e.clientX}else{lx=h-e.clientY;ly=e.clientX}}
   return[(lx-OX)/S,(ly-OY)/S]}
 
 /* sound */
-let AC=null,muted=false;try{muted=localStorage.getItem('nardMute')==='1'}catch(e){}
+let AC=null,muted=false;try{muted=localStorage.getItem('archMute')==='1'}catch(e){}
 function ac(){try{if(!AC){const C=window.AudioContext||window.webkitAudioContext;if(C)AC=new C()}if(AC&&AC.state==='suspended')AC.resume()}catch(e){}return AC}
 function tone(f0,f1,d,v,ty,t0){const o=AC.createOscillator(),g=AC.createGain();o.type=ty;o.frequency.setValueAtTime(f0,t0);o.frequency.exponentialRampToValueAtTime(Math.max(20,f1),t0+d);g.gain.setValueAtTime(.0001,t0);g.gain.exponentialRampToValueAtTime(v,t0+.006);g.gain.exponentialRampToValueAtTime(.0001,t0+d);o.connect(g);g.connect(AC.destination);o.start(t0);o.stop(t0+d+.03)}
 function nz(t0,d,v,f0,f1,ty){const n=Math.floor(AC.sampleRate*d),b=AC.createBuffer(1,n,AC.sampleRate),a=b.getChannelData(0);for(let i=0;i<n;i++)a[i]=(Math.random()*2-1)*Math.pow(1-i/n,1.5);const s=AC.createBufferSource();s.buffer=b;const f=AC.createBiquadFilter();f.type=ty||'bandpass';f.frequency.setValueAtTime(f0,t0);f.frequency.exponentialRampToValueAtTime(f1,t0+d);const g=AC.createGain();g.gain.value=v;s.connect(f);f.connect(g);g.connect(AC.destination);s.start(t0)}
@@ -117,7 +121,7 @@ const TH=[
  {s:['#040920','#14275c','#3a4f8c'],m:['#2b3b68','#1f2e58','#16224a'],t:['#0f2a3c','#081c2c'],g:['#4a8070','#2a5a4a','#25253a'],sun:'#e8f0ff',sx:660,sy:80,fog:'rgba(120,150,230,.18)',night:1}];
 
 /* state */
-let mode='adv',wind=0,round=[0,0],dif=1,selM='adv',endW=0,evq=[],NET={on:0,host:0,mq:null,code:'',slot:0,players:[],seen:[],ph:'lobby',ver:0,acc:0,aimT:0,lastSnap:0,full:0,err:''},state='menu',L=1,th=TH[0],archers=[],arrows=[],parts=[],texts=[],towers=[],zones=[],timers=[],sel=0,time=0,shake=0,toast='',toastT=0,runCoins=0,hint=0,clearT=0,endT=0,cam=0,len=2400,slow=0,kL=0,kR=0,arrId=0,nextAfter='';
+let mode='adv',wind=0,round=[0,0],dif=1,selM='adv',endW=0,evq=[],NET={on:0,host:0,mq:null,code:'',slot:0,players:[],seen:[],ph:'lobby',ver:0,acc:0,aimT:0,lastSnap:0,full:0,err:'',fmt:'22'},state='menu',L=1,th=TH[0],archers=[],arrows=[],parts=[],texts=[],towers=[],zones=[],timers=[],sel=0,time=0,shake=0,toast='',toastT=0,runCoins=0,hint=0,clearT=0,endT=0,cam=0,len=2400,slow=0,kL=0,kR=0,arrId=0,nextAfter='';
 const touches={};
 const flies=Array.from({length:26},(_,i)=>({x:hs(i)*W,y:hs(i+50)*H,z:.5+hs(i+9),p:hs(i+3)*6}));
 
@@ -363,7 +367,6 @@ function drawHUD(){if(mode!=='adv'){drawHUD2();return}
   slotRects().forEach(r=>{ctx.fillStyle=sel===r.i?'rgba(255,201,74,.55)':'rgba(0,0,0,.5)';ctx.fillRect(r.x,r.y,r.w,r.h);ctx.strokeStyle=sel===r.i?'#ffe08a':'rgba(255,255,255,.4)';ctx.lineWidth=2;ctx.strokeRect(r.x,r.y,r.w,r.h);ctx.font='20px Tahoma';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#fff';ctx.fillText(AR[r.i].ic,r.x+r.w/2,r.y+r.h/2-3);if(r.i>0)T(fa(save.ammo[r.i]),r.x+r.w/2,r.y+r.h-5,10)});
   if(p.helm||p.shield||p.tri)T((p.helm?'🪖 ':'')+(p.shield?'🛡️'+fa(p.shield)+' ':'')+(p.tri?'🔱'+fa(p.tri):''),131,44,13);
   if(hint>0)T('بکش عقب، هدف بگیر و رها کن 👆',W/2,H-24,15);
-  if(zones.every(z=>z.done)||(zones.some(z=>z.done)&&p.x>=lockX()-5&&false)){}
   if(lockX()>p.x+60&&zones.some(z=>z.done)&&Math.sin(time*6)>0)T('▶▶',W-40,H/2,30,'#ffe08a');
   if(toastT>0){ctx.globalAlpha=Math.min(1,toastT);T(toast,W/2,H/2-70,toast.length>9?32:44);ctx.globalAlpha=1}}
 function render(){th=state==='menu'?TH[0]:mode==='adv'?th:TH[Math.abs(wind|0)%3];
@@ -388,7 +391,7 @@ let last=0;
 function frame(t){const dt=Math.min(.05,(t-last)/1000||0);last=t;if(mode==='team'&&NET.on&&!NET.host){if(state==='play')guestUpdate(dt)}else if(state==='menu'){time+=dt;cam+=dt*20}else if(state!=='pause')update(dt);render();requestAnimationFrame(frame)}
 
 /* ui */
-const HOW={adv:'خودش جلو می‌ره و تو جایگاه می‌ایسته؛ تو فقط بکش عقب، هدف بگیر و رها کن. تیر به سر = ضربه‌ی دوبرابر!',duel:'دوئل: هر کی زودتر ۲ دور ببره برنده است. باد روی تیر اثر می‌ذاره.',two:'هر نفر نیمه‌ی خودش از صفحه رو بکشه. اولین نفری که ۲ دور ببره برنده است.',team:'تا ۴ نفر، ۲ به ۲. دعوت‌نامه رو برای دوستات بفرست؛ جای خالی با کامپیوتر پر می‌شه.'};
+const HOW={adv:'خودش جلو می‌ره و تو جایگاه می‌ایسته؛ تو فقط بکش عقب، هدف بگیر و رها کن. تیر به سر = ضربه‌ی دوبرابر!',duel:'دوئل: هر کی زودتر ۲ دور ببره برنده است. باد روی تیر اثر می‌ذاره.',two:'هر نفر نیمه‌ی خودش از صفحه رو بکشه. اولین نفری که ۲ دور ببره برنده است.',team:'تا ۴ نفر: ۱ به ۱، ۲ به ۲ یا ۱ به ۳. دعوت‌نامه رو برای دوستات بفرست؛ جای خالی با کامپیوتر پر می‌شه.'};
 function stat(){$('stat').innerHTML='🪙 '+fa(save.coins)+' &nbsp;|&nbsp; 🏆 بهترین مرحله: '+fa(save.best);$('go').textContent=selM==='adv'&&save.cur>1?'ادامه از مرحله‌ی '+fa(save.cur):'شروع';$('restart').hidden=save.cur<=1||selM!=='adv';$('how').textContent=HOW[selM]}
 $('modes').onclick=e=>{const m=e.target.dataset.m;if(!m)return;selM=m;[...$('modes').children].forEach(b=>b.classList.toggle('on',b.dataset.m===m));$('lvlw').hidden=!(m==='duel'||m==='team');stat()};
 $('lvls').onclick=e=>{const l=e.target.dataset.l;if(l===undefined)return;dif=+l;[...$('lvls').children].forEach(b=>b.classList.toggle('on',+b.dataset.l===dif))};
@@ -417,7 +420,7 @@ $('resume').onclick=()=>{$('menu').hidden=true;if(state==='pause')state='play'};
 $('home1').onclick=$('home2').onclick=()=>{Object.keys(touches).forEach(k=>delete touches[k]);showMenu()};
 $('rot2').onclick=$('rot3').onclick=flipScreen;
 function muteLabel(){$('mute').textContent=muted?'🔇 بی‌صدا':'🔊 صدا'}
-$('mute').onclick=()=>{muted=!muted;try{localStorage.setItem('nardMute',muted?'1':'0')}catch(e){}muteLabel()};
+$('mute').onclick=()=>{muted=!muted;try{localStorage.setItem('archMute',muted?'1':'0')}catch(e){}muteLabel()};
 
 function drawHUD2(){
   const a0=archers[0],a1=archers[1];
@@ -433,14 +436,18 @@ function startDuel(v){mode=v?'duel':'two';round=[0,0];sel=0;runCoins=0;$('burger
 function newRound(){
   cam=0;arrows=[];parts=[];texts=[];timers=[];zones=[];towers=[{x:55,y:GY-40,w:80,h:40},{x:665,y:GY-40,w:80,h:40}];wind=Math.round(rnd(-110,110));
   const a=mkA(0,95,GY-40,{isP:1}),b=mkA(1,705,GY-40,{isP:mode==='two'?1:0});if(mode==='duel')b.ai=mkAI();
-  archers=[a,b];state='play';say('دور '+fa(round[0]+round[1]+1),2);snd('wave')}
+  archers=[a,b];state='play';say('دور '+fa(round[0]+round[1]+1),2);snd('click')}
 
 /* ---------- online team mode (MQTT relay; host runs the game) ---------- */
-const ALPHA='abcdefghjkmnpqrstuvwxyz23456789',BROKERS=['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://test.mosquitto.org:8081'],APP_LINK='https://t.me/Dongbegir_bot/nard';
+const ALPHA='abcdefghjkmnpqrstuvwxyz23456789',BROKERS=['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://test.mosquitto.org:8081'];
 const myId=Math.random().toString(36).slice(2,10);
 const myName=(()=>{try{const u=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user;return String((u&&(u.first_name||u.username))||'').slice(0,14)}catch(e){return''}})();
 const esc=t=>String(t).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-const SLOT=[{team:0,x:95,fy:GY-40,bx:55,bw:80},{team:1,x:705,fy:GY-40,bx:665,bw:80},{team:0,x:215,fy:GY-70,bx:181,bw:68},{team:1,x:585,fy:GY-70,bx:551,bw:68}];
+/* چیدمان‌ها: ۱ به ۱ ، ۲ به ۲ ، ۱ به ۳  (ترتیب ورود بازیکن‌ها = ترتیب جایگاه‌ها) */
+const P_L0={team:0,x:95,fy:GY-40,bx:55,bw:80},P_R0={team:1,x:705,fy:GY-40,bx:665,bw:80},P_L1={team:0,x:215,fy:GY-70,bx:181,bw:68},P_R1={team:1,x:585,fy:GY-70,bx:551,bw:68},P_R2={team:1,x:465,fy:GY-40,bx:431,bw:68};
+const FM={'11':[P_L0,P_R0],'22':[P_L0,P_R0,P_L1,P_R1],'13':[P_L0,P_R0,P_R1,P_R2]};
+const SL=()=>FM[NET.fmt]||FM['22'];
+const loneHP=(fmt,team)=>fmt==='13'&&team===0?180:100;
 const tp=s=>'tarch/'+NET.code+'/'+s,put=(s,o,q)=>{try{if(NET.mq&&NET.mq.connected)NET.mq.publish(tp(s),JSON.stringify(o),q||{qos:0})}catch(e){}};
 const teamLink=()=>APP_LINK+'?startapp='+NET.code,rcode=n=>Array.from({length:n},()=>ALPHA[Math.floor(Math.random()*ALPHA.length)]).join('');
 function loadMqtt(ok,fail){if(window.mqtt){ok();return}const s2=document.createElement('script');s2.src='https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js';s2.onload=()=>window.mqtt?ok():fail();s2.onerror=fail;document.head.appendChild(s2)}
@@ -456,30 +463,33 @@ function mqConnect(i,ok,fail){let done=false;
     if(t2.endsWith('/i'))onInput(o);else if(t2.endsWith('/l'))onLobby(o);else if(t2.endsWith('/s'))onCtl(o)})}
 function roomUI(){
   if(state==='play'||state==='ending'||state==='over')return;
-  const nm=i=>{const p=NET.players[i];return p?(p.id===myId?'⭐ ':'')+esc(p.n||('بازیکن '+fa(i+1))):'🤖 کامپیوتر'},cd=i=>'<div class="pc '+(i%2?'R':'L')+'">'+nm(i)+'</div>';
-  $('rpl').innerHTML='<div><div class="sm">🔵 تیم چپ</div>'+cd(0)+cd(2)+'</div><div><div class="sm">🔴 تیم راست</div>'+cd(1)+cd(3)+'</div>';
+  const sl=SL(),nm=i=>{const p=NET.players[i];return p?(p.id===myId?'⭐ ':'')+esc(p.n||('بازیکن '+fa(i+1))):'🤖 کامپیوتر'},cd=i=>'<div class="pc '+(sl[i].team?'R':'L')+'">'+nm(i)+'</div>';
+  const li=[],ri=[];sl.forEach((d,i)=>(d.team?ri:li).push(i));
+  $('rpl').innerHTML='<div><div class="sm">🔵 تیم چپ</div>'+li.map(cd).join('')+'</div><div><div class="sm">🔴 تیم راست</div>'+ri.map(cd).join('')+'</div>';
+  [...$('fmts').children].forEach(b=>{b.classList.toggle('on',b.dataset.f===NET.fmt);b.disabled=!NET.host||NET.players.length>FM[b.dataset.f].length});
+  $('fmts').hidden=!(NET.host||NET.slot>=0);
   let m;if(NET.err)m=NET.err;else if(NET.host)m=!NET.on?'در حال ساخت اتاق…':NET.players.length<2?'دعوت‌نامه رو برای دوستت بفرست؛ وقتی وارد شد می‌تونی شروع کنی.':'جای خالی با کامپیوتر پر می‌شه. هر وقت آماده بودین شروع کن.';
   else m=NET.full?'این اتاق پر است یا بازی توش شروع شده.':NET.slot<0?'در حال ورود به اتاق…':'منتظر شروع بازی توسط میزبان…';
   $('rmsg').textContent=m;$('share').hidden=$('copy').hidden=!(NET.host&&NET.on);$('rstart').hidden=!NET.host;$('rstart').disabled=NET.players.length<2;$('room').hidden=false}
-function lobbyPub(){NET.ver++;put('l',{v:NET.ver,ph:NET.ph,p:NET.players},{qos:1,retain:true})}
-function teamHost(){netClose();mode='team';NET.host=1;NET.slot=0;NET.ph='lobby';NET.players=[{id:myId,n:myName}];NET.seen=[Date.now()];NET.ver=0;NET.full=0;NET.err='';state='menu';archers=[];arrows=[];towers=[];$('setup').hidden=true;roomUI();tryHost(0)}
+function lobbyPub(){NET.ver++;put('l',{v:NET.ver,ph:NET.ph,f:NET.fmt,p:NET.players},{qos:1,retain:true})}
+function teamHost(){netClose();mode='team';NET.host=1;NET.slot=0;NET.ph='lobby';NET.fmt='22';NET.players=[{id:myId,n:myName}];NET.seen=[Date.now()];NET.ver=0;NET.full=0;NET.err='';state='menu';archers=[];arrows=[];towers=[];$('setup').hidden=true;roomUI();tryHost(0)}
 function tryHost(i){if(i>=BROKERS.length){NET.err='اتصال به سرور بازی برقرار نشد. اینترنت یا فیلترشکن رو چک کن.';roomUI();return}
   NET.code='a'+i+rcode(5);loadMqtt(()=>mqConnect(i,()=>{lobbyPub();roomUI()},()=>tryHost(i+1)),()=>tryHost(BROKERS.length))}
-function teamJoin(code){netClose();mode='team';NET.host=0;NET.code=code;NET.slot=-1;NET.ph='lobby';NET.players=[];NET.full=0;NET.err='';state='menu';archers=[];arrows=[];towers=[];$('setup').hidden=true;roomUI();
+function teamJoin(code){netClose();mode='team';NET.host=0;NET.code=code;NET.slot=-1;NET.ph='lobby';NET.fmt='22';NET.players=[];NET.full=0;NET.err='';state='menu';archers=[];arrows=[];towers=[];$('setup').hidden=true;roomUI();
   const fail=()=>{NET.err='اتصال به سرور بازی برقرار نشد. اینترنت یا فیلترشکن رو چک کن.';roomUI()};
   loadMqtt(()=>mqConnect(+code[1],()=>roomUI(),fail),fail);
   setTimeout(()=>{if(NET.code===code&&!NET.host&&!NET.players.length&&!NET.err){NET.err='اتاق پیدا نشد. مطمئن شو دوستت بازی رو باز گذاشته.';roomUI()}},15000)}
-function onLobby(o){if(NET.host||!o.p)return;NET.err='';NET.players=o.p;NET.ph=o.ph;NET.slot=o.p.findIndex(p=>p.id===myId);NET.full=(NET.slot<0&&(o.ph==='play'||o.p.length>=4))?1:0;roomUI()}
+function onLobby(o){if(NET.host||!o.p)return;NET.err='';NET.fmt=FM[o.f]?o.f:'22';NET.players=o.p;NET.ph=o.ph;NET.slot=o.p.findIndex(p=>p.id===myId);NET.full=(NET.slot<0&&(o.ph==='play'||o.p.length>=SL().length))?1:0;roomUI()}
 function startTeamMatch(){round=[0,0];NET.ph='play';lobbyPub();$('room').hidden=true;$('over').hidden=true;$('again').hidden=false;$('burger').hidden=false;newRoundTeam()}
 function newRoundTeam(){
   cam=0;arrows=[];parts=[];texts=[];timers=[];zones=[];evq.length=0;wind=Math.round(rnd(-110,110));
-  archers=SLOT.map((d,i)=>{const pl=NET.players[i];return mkA(d.team,d.x,d.fy,pl?{slot:i,isP:1,human:1,name:pl.n||('بازیکن '+fa(i+1))}:{slot:i,human:0,name:'کامپیوتر',ai:mkAI()})});
-  towers=SLOT.map(d=>({x:d.bx,y:d.fy,w:d.bw,h:GY-d.fy}));state='play';hint=5;
-  put('s',{k:'rnd',w:wind,rd:round,sl:archers.map(a=>({h:a.human,n:a.name}))},{qos:1});say('دور '+fa(round[0]+round[1]+1),2);snd('wave')}
+  archers=SL().map((d,i)=>{const pl=NET.players[i],hp=loneHP(NET.fmt,d.team);return mkA(d.team,d.x,d.fy,pl?{slot:i,isP:1,human:1,hp,max:hp,name:pl.n||('بازیکن '+fa(i+1))}:{slot:i,human:0,hp,max:hp,name:'کامپیوتر',ai:mkAI()})});
+  towers=SL().map(d=>({x:d.bx,y:d.fy,w:d.bw,h:GY-d.fy}));state='play';hint=5;
+  put('s',{k:'rnd',w:wind,rd:round,f:NET.fmt,sl:archers.map(a=>({h:a.human,n:a.name,m:a.max}))},{qos:1});say('دور '+fa(round[0]+round[1]+1),2);snd('click')}
 function onInput(o){
   if(!NET.host)return;
   if(o.k==='hi'){let i=NET.players.findIndex(p=>p.id===o.id);
-    if(i<0&&NET.ph==='lobby'&&NET.players.length<4){NET.players.push({id:String(o.id).slice(0,12),n:String(o.n||'').slice(0,14)});i=NET.players.length-1}
+    if(i<0&&NET.ph==='lobby'&&NET.players.length<SL().length){NET.players.push({id:String(o.id).slice(0,12),n:String(o.n||'').slice(0,14)});i=NET.players.length-1}
     if(i>=0)NET.seen[i]=Date.now();lobbyPub();roomUI();return}
   const i=NET.players.findIndex(p=>p.id===o.id);if(i<1)return;NET.seen[i]=Date.now();
   if(state!=='play')return;const a=archers[i];if(!a||!a.human||a.hp<=0)return;
@@ -491,9 +501,9 @@ function netTick(dt){
   put('s',{k:'snap',w:wind,A:archers.map(a=>[Math.round(a.hp),+a.dead.toFixed(2),a.freeze>0?1:0,a.aim?+a.aim.ang.toFixed(3):null,a.aim?+a.aim.pw.toFixed(2):0]),
     B:arrows.map(a=>[a.id,Math.round(a.x),Math.round(a.y),Math.round(a.vx),Math.round(a.vy),a.stuck?(a.stuck.tg?2:1):0,+a.t.toFixed(2),a.team]),E:evq.splice(0,40)})}
 function onCtl(o){if(NET.host)return;NET.lastSnap=Date.now();if(o.k==='snap'){if(state==='play'&&archers.length)applySnap(o)}else if(o.k==='rnd')onRound(o);else if(o.k==='end')onEnd(o)}
-function onRound(o){if(NET.slot<0)return;wind=o.w;round=o.rd;cam=0;
-  archers=SLOT.map((d,i)=>{const q=o.sl[i]||{};return mkA(d.team,d.x,d.fy,{slot:i,isP:q.h?1:0,human:q.h,name:q.n})});
-  towers=SLOT.map(d=>({x:d.bx,y:d.fy,w:d.bw,h:GY-d.fy}));arrows=[];parts=[];texts=[];timers=[];state='play';hint=5;
+function onRound(o){if(NET.slot<0)return;wind=o.w;round=o.rd;cam=0;if(FM[o.f])NET.fmt=o.f;
+  archers=SL().map((d,i)=>{const q=o.sl[i]||{},m=q.m||100;return mkA(d.team,d.x,d.fy,{slot:i,isP:q.h?1:0,human:q.h,name:q.n,hp:m,max:m})});
+  towers=SL().map(d=>({x:d.bx,y:d.fy,w:d.bw,h:GY-d.fy}));arrows=[];parts=[];texts=[];timers=[];state='play';hint=5;
   ['over','room','setup','menu'].forEach(i=>$(i).hidden=true);$('burger').hidden=false}
 function onEnd(o){round=o.rd;state='over';$('burger').hidden=true;$('menu').hidden=true;
   const mt=archers[NET.slot]?archers[NET.slot].team:0,win=o.w===mt;$('ot').textContent=win?'🏆 تیم شما برد!':'😅 تیم شما باخت';
@@ -513,6 +523,7 @@ function guestUpdate(dt){
 function netAim(a,force){if(NET.host||!NET.mq)return;const n=Date.now();if(!force&&n-NET.aimT<90)return;NET.aimT=n;put('i',{k:'aim',id:myId,a:a.aim?[+a.aim.ang.toFixed(3),+a.aim.pw.toFixed(2)]:null})}
 function netShot(a,pw,ang){put('i',{k:'shot',id:myId,pw:+pw.toFixed(2),ang:+ang.toFixed(3)},{qos:1});a.cd=.8;a.pull=1}
 setInterval(()=>{if(mode==='team'&&!NET.host&&NET.on)put('i',{k:'hb',id:myId})},2500);
+$('fmts').onclick=e=>{const f=e.target.dataset.f;if(!f||!NET.host||NET.ph!=='lobby'||!FM[f])return;if(NET.players.length>FM[f].length)return;NET.fmt=f;lobbyPub();roomUI()};
 $('share').onclick=()=>{const u='https://t.me/share/url?url='+encodeURIComponent(teamLink())+'&text='+encodeURIComponent('بیا تیراندازها بازی کنیم 🏹');if(tg&&tg.openTelegramLink)tg.openTelegramLink(u);else window.open(u,'_blank')};
 $('copy').onclick=()=>{try{navigator.clipboard.writeText(teamLink());$('copy').textContent='کپی شد ✓'}catch(e){prompt('لینک:',teamLink())}};
 $('rstart').onclick=()=>{if(NET.host&&NET.players.length>=2)startTeamMatch()};
